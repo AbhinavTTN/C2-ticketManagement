@@ -1,0 +1,7 @@
+---
+description: RAG/vector-store conventions for ticket QA — grounding, citations, no-fabrication contract; chunking, embedding model, and top-K/similarity threshold are open questions pending spec analysis
+globs: "**/*{Qa,Embedding,Vector,Rag}*.java"
+alwaysApply: false
+---
+
+Follow `rules/rag-vector-store.md`. The QA contract (grounded answers, citations, explicit no-match, read-only) is fixed. Chunking strategy, embedding model, and top-K/similarity threshold are OPEN QUESTIONS — do not invent defaults; resolve them during spec analysis and record decisions in the rule file.

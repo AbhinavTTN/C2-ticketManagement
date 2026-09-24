@@ -1,0 +1,7 @@
+---
+description: REST conventions, ProblemDetail error shape, ticket list pagination, and URI versioning for the ticket management API
+globs: "**/*.{java,yml}"
+alwaysApply: false
+---
+
+Follow `rules/api-standards.md` for REST paths and HTTP status, RFC 7807 `ProblemDetail` errors with `code`, paginated `GET /api/v1/tickets` (never a bare array), and `/api/v1` URI versioning.
