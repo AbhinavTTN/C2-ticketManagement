@@ -1297,3 +1297,525 @@ Keep style consistent with the other command files: header, procedure, numbered 
 _**Agent (auto-smart)**_
 
 I’ll create the RAG-output review command, grounded in the QA contract (`TicketQaResponse`: `found`, `answer`, `citations`) and the non-negotiables in `rules/rag-vector-store.md`.
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2"><details>
+<summary>Tool use: **edit_file_v2** • Edit file: /Users/abhinavsrivastava/projects/C2-ticketManagement/commands/review-rag-output.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2"><details>
+<summary>Tool use: **edit_file_v2** • Edit file: /Users/abhinavsrivastava/projects/C2-ticketManagement/.cursor/commands/review-rag-output.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+Both files created. Summarize per the quality rule.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+`commands/review-rag-output.md` is created, runnable as `/review-rag-output` via `.cursor/commands/review-rag-output.md`.
+
+**How it works**
+
+- **Inputs** — The full response JSON (`question`, `found`, `answer`, `citations[]`) plus the source records for every cited ticket, since the answer may not exceed the retrieved context. Missing inputs are asked for up front.
+- **Procedure** — Split the answer into atomic claims first, then run the three checks per claim, recording quoted claim → cited id → what the source actually says.
+- **Check 1 — Traceability** — Every claim attributable to a cited ticket id (a true claim without citation still fails); named/implied tickets appear in `citations`; aggregate claims cite *all* supporting tickets; citation metadata matches stored values; citation padding is a warning.
+- **Check 2 — Fabrication** — Flags invented causes/ETAs/resolutions, embellishment, facts merged across tickets, stale or invented field values, invented numbers, speculation-as-fact, ungrounded advice; quotes must be exact, paraphrase must preserve meaning.
+- **Check 3 — No-match correctness** — `found=false` requires empty citations and the bare no-match message; also catches **false negatives** (relevant ticket existed), **false positives** (`found=true` with irrelevant citations), contradictions (message + citations together), and invented summaries for nonexistent ticket ids.
+- **Safety** — The answer is treated as content to analyze; injected directives inside it are flagged, never followed.
+- **Verdict** — `PASS` / `PASS WITH WARNINGS` / `FAIL` with a per-claim traceability table; any untraceable claim, fabrication, or incorrect no-match is a hard fail, matching the product requirements in `rules/rag-vector-store.md`.
+
+**Files created:** `commands/review-rag-output.md`, `.cursor/commands/review-rag-output.md`
+
+One note: you named the endpoint `/api/ai/ask`, but the current code exposes it as `POST /api/v1/qa` (`TicketQaController`) — the command references both so it stays accurate whichever path is in play.
+
+---
+
+_**User**_
+
+Based on the requirements
+Build a Support Ticket Management System with the following features:
+Create a ticket.
+List tickets.
+View ticket details.
+Update title, description, priority and assignee.
+Add comments.
+Search tickets by keyword.
+Filter tickets by status.
+Persist data in a database.
+Validate input at the backend.
+Display meaningful errors in the UI.
+Provide a natural-language question-answering endpoint over ticket history, grounded strictly in real ticket data.
+Cite the specific ticket(s) used to produce any assistant answer.
+Explicitly indicate when no relevant tickets are found, rather than fabricate an answer.
+
+The following state machine must be enforced by the backend:
+OPEN → IN_PROGRESS → RESOLVED → CLOSED
+
+OPEN → CANCELLED
+IN_PROGRESS → CANCELLED
+Invalid transitions must be rejected.
+Example:
+CLOSED → OPEN       ❌
+RESOLVED → OPEN     ❌
+CANCELLED → OPEN    ❌
+
+write spec/requirements.md as a numbered functional requirements list, separating CRUD/ticket features from the AI question-answering feature.
+
+---
+
+_**Agent (auto-smart)**_
+
+> Auto routed to Grok 4.6
+
+
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+I will organize the requirements into a numbered functional list. CRUD and ticket management will be separated from the AI question-answering feature.
+
+I will examine existing specs, API conventions, and implementation code to ensure the requirements are accurate and internally consistent. I will avoid inventing RAG defaults and instead cover edge cases from the review specification.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+I’ll ground the requirements in the product brief plus the current domain, API, and QA contracts so CRUD and AI stay separate and internally consistent.
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2**</summary>
+File not found
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2**</summary>
+File not found
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2**</summary>
+File not found
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2**</summary>
+File not found
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="search" data-tool-name="glob_file_search"><details>
+<summary>Tool use: **glob_file_search** • Searched codebase "" • **0** results in **1** directory</summary>
+
+Directory: **`/Users/abhinavsrivastava/projects/C2-ticketManagement`** (0 files)
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/rules/api-standards.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2**</summary>
+File not found
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+Java source files appear to have been deleted.
+
+Exploring the workspace state.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="search" data-tool-name="glob_file_search"><details>
+<summary>Tool use: **glob_file_search** • Searched codebase "" • **57** results in **1** directory</summary>
+
+Directory: **`/Users/abhinavsrivastava/projects/C2-ticketManagement`** (57 files)
+
+| File |
+|------|
+| `src/main/java/com/company/ticketmanagement/ticket/dto/CreateTicketRequest.java` |
+| `rules/rag-vector-store.md` |
+| `src/main/java/com/company/ticketmanagement/ticket/application/TicketQaService.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/dto/UpdateTicketRequest.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/domain/TicketStatus.java` |
+| `.vscode/settings.json` |
+| `src/test/java/com/company/ticketmanagement/ticket/application/TicketServiceTest.java` |
+| `.cursor/rules/testing.mdc` |
+| `src/main/java/com/company/ticketmanagement/ticket/api/TicketQaController.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/domain/Comment.java` |
+| `.cursor/rules/rag-vector-store.mdc` |
+| `src/main/java/com/company/ticketmanagement/ticket/infrastructure/TicketRepository.java` |
+| `rules/java-springboot.md` |
+| `src/main/java/com/company/ticketmanagement/ticket/domain/TicketStateConflictException.java` |
+| `.DS_Store` |
+| `src/main/java/com/company/ticketmanagement/common/exception/GlobalExceptionHandler.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/dto/TicketQaRequest.java` |
+| `src/main/java/com/company/ticketmanagement/common/exception/ErrorCode.java` |
+| `.specstory/.gitignore` |
+| `src/main/java/com/company/ticketmanagement/ticket/dto/TicketQaResponse.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/mapper/TicketMapper.java` |
+| `rules/testing.md` |
+| `.cursor/commands/review-rag-output.md` |
+| `rules/api-standards.md` |
+| `src/main/java/com/company/ticketmanagement/ticket/api/TicketController.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/domain/TicketNotFoundException.java` |
+| `.specstory/.project.json` |
+| `src/main/java/com/company/ticketmanagement/ticket/dto/TicketResponse.java` |
+| `.gitignore` |
+| `commands/review-spec.md` |
+| `src/main/java/com/company/ticketmanagement/common/exception/AppException.java` |
+| `commands/generate-tests.md` |
+| `src/main/java/com/company/ticketmanagement/TicketManagementApplication.java` |
+| `src/main/resources/db/migration/V1__init.sql` |
+| `.specstory/history/2026-09-24_09-51-32Z-spring-boot-app-conventions.md` |
+| `src/main/java/com/company/ticketmanagement/ticket/dto/CommentResponse.java` |
+| `src/test/java/com/company/ticketmanagement/ticket/application/TicketQaServiceTest.java` |
+| `.cursor/commands/review-spec.md` |
+| `.cursor/rules/api-standards.mdc` |
+| `src/main/resources/application.yml` |
+| `.cursor/rules/java-springboot.mdc` |
+| `.specstory/cli/config.toml` |
+| `.cursor/commands/review-code.md` |
+| `src/main/java/com/company/ticketmanagement/ticket/dto/AddCommentRequest.java` |
+| `.specstory/history/2026-09-24_09-36-47Z-support-ticket-requirements.md` |
+| `src/test/java/com/company/ticketmanagement/ticket/api` |
+| `src/main/java/com/company/ticketmanagement/ticket/domain/TicketPriority.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/application/TicketService.java` |
+| `src/test/java/com/company/ticketmanagement/ticket/api/TicketApiIT.java` |
+| `commands/review-code.md` |
+| `.cursorindexingignore` |
+| `src/main/java/com/company/ticketmanagement/config/CorsConfig.java` |
+| `.cursor/commands/generate-tests.md` |
+| `commands/review-rag-output.md` |
+| `src/main/java/com/company/ticketmanagement/ticket/dto/TicketSummaryResponse.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/dto/TransitionTicketRequest.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/domain/Ticket.java` |
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/.git/COMMIT_EDITMSG</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/rules/rag-vector-store.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+A glob search failed due to missing files, likely caused by incorrect paths.
+
+Reviewing existing API patterns and standards to structure the requirements. The spec will separate CRUD ticket operations from the AI question-answering feature. Acceptance criteria will be observable. Pagination must be added to ticket listings per api-standards.
+
+Pagination will not be added as a hard functional requirement. The product brief does not specify it, and the review specification forbids inventing unjustified pagination unless explicitly required.
+
+The repository contains no frontend code, so UI error display requirements will reference ProblemDetail responses without prescribing a specific stack. Authentication is explicitly out of scope. The functional requirements will be numbered from FR-1 through FR-11, covering creation, listing, viewing, updating, comments, search, filtering, persistence, validation, UI errors, and the state machine.
+
+FR-12 Invalid transitions will be added to the state machine requirements. The AI section will include FR-13 QA endpoint, FR-14 Grounded answers, FR-15 Citations, and FR-16 No-match handling. Granular numbering will follow the user's request. Out-of-scope items and open questions for RAG will be noted. Priority values will be LOW, MEDIUM, HIGH, and URGENT. TicketPriority and CreateTicketRequest will be reviewed next.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2**</summary>
+File not found
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2**</summary>
+File not found
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2**</summary>
+File not found
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2**</summary>
+File not found
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2**</summary>
+File not found
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+Files were located but could not be read.
+
+A shell command will be used to inspect the files directly.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="shell" data-tool-name="run_terminal_command_v2"><details>
+<summary>Tool use: **run_terminal_command_v2** • Run command: ls -la src/main/java/com/company/ticketmanagement/ticket/domain/ &amp;&amp; cat src/main/java/com/company/ticketmanagement/ticket/domain/TicketPriority.java src/main/java/com/company/ticketmanagement/ticket/domain/TicketStatus.java</summary>
+```bash
+ls -la src/main/java/com/company/ticketmanagement/ticket/domain/ && cat src/main/java/com/company/ticketmanagement/ticket/domain/TicketPriority.java src/main/java/com/company/ticketmanagement/ticket/domain/TicketStatus.java
+```
+
+```
+ls: src/main/java/com/company/ticketmanagement/ticket/domain/: No such file or directory
+
+```
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="search" data-tool-name="glob_file_search"><details>
+<summary>Tool use: **glob_file_search** • Searched codebase "" • **0** results in **1** directory</summary>
+
+Directory: **`/Users/abhinavsrivastava/projects/C2-ticketManagement`** (0 files)
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+Checking whether files referenced by glob patterns were deleted from disk.
+
+File reads failed due to a workspace state issue. I will draft the requirements specification directly from the user's requirements and known conventions. The document will be a numbered functional requirements list with observable criteria. It will separate CRUD and ticket features from the AI question-answering feature. Open questions for RAG will be included. Authentication is out of scope.
+
+Requirements will use continuous FR-1 numbering across all sections. The UI must render backend ProblemDetail titles, details, and fields as meaningful errors. The document will contain three sections: ticket CRUD and lifecycle, AI question answering, and out-of-scope items with open questions. The state machine enforces valid transitions OPEN→IN_PROGRESS→RESOLVED→CLOSED and OPEN→CANCELLED and IN_PROGRESS→CANCELLED, rejecting invalid ones with concrete examples.
+
+Ticket priorities are LOW, MEDIUM, HIGH, and URGENT. Titles are required and limited to 200 characters. Descriptions are required and limited to 10,000 characters. Assignees are optional and limited to 120 characters. Comments include author and body fields. Question queries are limited to 1,000 characters. Listing returns all matching tickets without pagination. Status and keyword filters may be combined.
+
+Backend validation limits will be drawn from the existing DTOs. Persistence will require durable relational storage that survives restarts, without specifying PostgreSQL.
+
+The HTTP API surface will be treated as the observable interface, following the existing api-standards conventions.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+Java sources aren’t readable in this workspace snapshot; I’ll write the spec from the product brief and the existing API, testing, and RAG contracts.
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2"><details>
+<summary>Tool use: **edit_file_v2** • Edit file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/requirements.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+Outlining the spec structure to separate CRUD ticket features from the AI question-answering endpoint.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+`spec/requirements.md` is a numbered functional-requirements list, split so ticket work and QA cannot be mixed together.
+
+**Section A — tickets (FR-1–FR-13)**  
+Create, list, detail, unknown-id 404, partial update (status not via update), comments, keyword search, status filter, database persistence, backend validation, the state machine (`OPEN → IN_PROGRESS → RESOLVED → CLOSED`, plus `OPEN`/`IN_PROGRESS → CANCELLED`), 409 on invalid transitions (including the three examples), and UI display of `ProblemDetail` errors.
+
+**Section B — AI QA (FR-14–FR-17)**  
+Read-only `POST /api/v1/qa`: answers grounded only in stored tickets/comments, citations for every ticket used, explicit no-match (`found=false`, empty citations, no fabrication), and QA reading the same persisted history as CRUD.
+
+Each FR has an observable **Pass** condition. Terms (`TicketStatus`, `TicketPriority`, error `code`s) are defined once so they cannot drift. Auth, roles, and similar extras are called out as **out of scope**. Chunking, embedding model, and top-K/threshold stay **open questions** — no defaults.
+
+**File created:** `spec/requirements.md`
+
+---
+
+_**User**_
+
+Write spec/architecture.md: propose the module structure (ticket module, comment module, RAG ingestion module, ask-endpoint module) and the ingestion pipeline from ticket to knowledge document to chunk to embedding to vector store.
+and spec/data-model.md: define Ticket, Comment, and any ingestion-tracking entities, the status enum, and the required metadata (ticketId, status, priority, assignee, category) that must appear on every embedded chunk.
+
+---
+
+_**Agent (auto-smart)**_
+
+> Auto routed to Grok 4.6
+
+
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+Drafting two specification documents: one for architecture and module structure, and another for data models including tickets, comments, and ingestion tracking.
+
+Adhering to existing feature-first package conventions. RAG pipeline details will remain open-ended without inventing chunking strategies or embedding models. The data model must include category metadata on every chunk, though this field may not yet exist on the Ticket entity.
+
+Reviewing existing specifications and the Ticket entity to ensure consistency. The architecture will define four modules: ticket, comment, RAG ingestion, and ask-endpoint. The ingestion pipeline flows from ticket to knowledge document, then chunk, embedding, and finally vector store. Required chunk metadata includes ticketId, status, priority, assignee, and category.
+
+Category will be added as a required ticket field so chunk metadata can be populated. The architecture will propose a target module structure even if the current code nests comments within the ticket package. Chunk size, embedding model, and top-K settings remain open questions; the pipeline stages will still be described without choosing specific values.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+I’ll read the current spec, domain model, and RAG rules so the architecture and data-model docs stay consistent and don’t invent embedding defaults.
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/requirements.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/rules/java-springboot.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/rules/rag-vector-store.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2**</summary>
+File not found
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2**</summary>
+File not found
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2**</summary>
+File not found
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+The architecture document will propose four sibling modules under a shared package.
+
+The ticket module will own the aggregate and its state machine. Comments will move to a separate `comment/` package with its own repository, while HTTP endpoints remain on the ticket controller.
+
+The ingestion pipeline will flow from tickets and comments into canonical knowledge documents, then into chunks that carry ticketId, status, priority, assignee, and category metadata. Chunk size, embedding model, and retrieval top-K will be left unspecified. The ask module will handle QA endpoints, retrieval, and answer composition. The data model will add a category field to the Ticket entity.
+
+Existing tickets missing a category will block ingestion unless a sentinel value is used. The category field will be a required string or an open enum, avoiding arbitrary values.
+
+The Ticket category field will be a required string of 1–64 characters, leaving values to product definition. Ingestion tracking will use a KnowledgeDocument entity per ticket with source ticket ID, content hash, last ingested timestamp, and a status enum covering PENDING, INDEXED, STALE, and FAILED. A Chunk entity will hold chunk ID, document ID, ordinal, text, and a metadata snapshot.
+
+An ingestion job or ticket ingestion state will track whether a ticket needs re-indexing after updates, comments, or transitions. The relational database will hold tickets, comments, and ingestion state, while the vector store stores vectors and the same metadata for filtering. When a ticket changes, the pipeline will mark the document stale and rerun outside the ask request. The ask module will embed queries, search vectors, filter by metadata, and map results back to ticket IDs for citations. Requirements may need updating to reflect the proposed module split.
+
+A short "spec delta" note will flag Ticket.category as a new requirement. Since FR-1 does not yet list it, create and update operations must accept the field. This addition is explicitly outside the original requirements.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2"><details>
+<summary>Tool use: **edit_file_v2** • Edit file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/architecture.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2"><details>
+<summary>Tool use: **edit_file_v2** • Edit file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/data-model.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+Drafting both specification files now. The architecture document will define four modules: ticket, comment, RAG ingestion, and ask-endpoint. It will map the full pipeline from ticket to vector store. The data model document will define Ticket, Comment, and ingestion tracking entities. It will also define the status enum and required chunk metadata.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+Two spec files are in place: module boundaries and pipeline in `spec/architecture.md`, entities and chunk metadata in `spec/data-model.md`.
+
+**Architecture — four modules** (feature packages, same layering as `rules/java-springboot.md`)
+
+- **ticket** — aggregate, state machine, list/search/update; publishes `TicketChanged`; never embeds.
+- **comment** — comment entity and add-comment; verifies ticket exists; same event for re-index.
+- **ingestion** — knowledge document → chunks → embed → vector upsert; async after commit, not on the ask thread.
+- **ask** — `POST /api/v1/qa` only; read-only; citations from live ticket rows.
+
+**Pipeline:** Ticket (+ comments) → knowledge document (`contentHash` + metadata snapshot) → chunks (replace-by-`ticketId`) → embedding → vector store. Ask is a separate retrieve path. Chunk size, model, and top-K/threshold stay **open**.
+
+**Data model**
+
+- **TicketStatus** as specified (`OPEN` → `IN_PROGRESS` → `RESOLVED` → `CLOSED`, plus cancel from `OPEN`/`IN_PROGRESS`).
+- **Ticket** / **Comment** as the system of record.
+- **Ingestion tracking:** `KnowledgeDocument`, `IngestionRecord` (`PENDING` / `STALE` / `INDEXED` / `FAILED`), optional `ChunkRecord` for audit.
+- **Every chunk** must carry `ticketId`, `status`, `priority`, `assignee` (nullable), `category` — no upsert if any required key is missing.
+
+**Spec delta:** `category` is required on `Ticket` so chunk metadata can be filled. FR-1 does not list it yet; create/update must persist it when this model is implemented. Category **values** are not invented.
+
+**Files created:** `spec/architecture.md`, `spec/data-model.md`
+
+---
+
+_**User**_
+
+Write spec/state-machine.md: formally define the ticket status transition table (OPEN→IN_PROGRESS→RESOLVED→CLOSED, OPEN→CANCELLED, IN_PROGRESS→CANCELLED) and explicitly list every invalid transition that must be rejected.
+and spec/api-contract.md covering all CRUD endpoints (create, list, view, update, comment, search, filter).
+
+---
+
+_**Agent (auto-smart)**_
+
+> Auto routed to kimi-k3
+
+I’ll read the pagination and error sections of the API standards so the contract matches exactly.
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/rules/api-standards.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2"><details>
+<summary>Tool use: **edit_file_v2** • Edit file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/state-machine.md</summary>
+Status: **loading**
+
+</details></tool-use>
