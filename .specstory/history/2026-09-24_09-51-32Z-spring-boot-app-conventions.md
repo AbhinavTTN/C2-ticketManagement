@@ -2165,5 +2165,706 @@ Drafting a UI flow specification for the ticket list, detail view, create/edit f
 
 The spec defines pagination, search, filters, empty states, and row clicks for the ticket list. The detail view shows full fields, oldest-first comments, transition actions, and comment input. Forms include validation from ProblemDetail fields; status is excluded from edits. The AI panel displays questions, answers, citations, and no-match states. It remains read-only. Auth is omitted. Routes may be proposed as the UI contract.
 
-No frontend files exist yet, so the spec proposes UI routes aligned with the API.
+No frontend files exist yet, so the spec proposes UI routes aligned with the API. The edit form is a separate route reached from the detail view. The AI Q&A panel is a persistent side panel on both the list and detail pages, not a full page.
+
+Create returns 201 and redirects to the new detail. Edit patches the record and returns to detail without changing status. Transition buttons appear only for allowed transitions. A 409 conflict preserves the current status and shows the detail message. Comments add successfully. Bad IDs return 404. The QA panel asks questions and cites results linking to detail pages. No-match responses show only the raw server message. Error display follows FR-13.
 </details></think>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2"><details>
+<summary>Tool use: **edit_file_v2** • Edit file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/ui-flow.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+The UI flow is clear. No further tools are needed.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+`spec/ui-flow.md` describes how the four screens behave against the existing ticket and QA APIs.
+
+**Ticket list** (`/tickets`) shows summary rows, keyword search via `q`, status filter, and 0-based paging. An empty page is an empty state, not an error. A row opens the ticket.
+
+**Detail** (`/tickets/{id}`) shows the full ticket and comments, oldest first. Status buttons come only from `allowedTransitions`. A 409 keeps the current status and shows the server `detail`. Comments post onto the same screen.
+
+**Create and edit** collect title, description, priority, assignee, and category. Status is not on the create form and is read-only on edit. Validation errors use `fields` on the inputs and `detail` above the form. A successful create or edit returns to the detail view.
+
+**AI Q&A panel** sits on top of the list or detail and only calls `POST /api/v1/qa`. A hit shows the answer plus citations that link to those tickets. A miss shows the server no-match message and no citations. The panel never creates, edits, or transitions a ticket.
+
+---
+
+_**User**_
+
+Run commands/review-spec.md against every file in spec/ and flag any inconsistencies, missing edge cases, or unjustified assumptions.
+
+---
+
+_**Agent (auto-smart)**_
+
+> Auto routed to Grok 4.7
+
+
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+Running the review-spec command against every file in spec/ to identify inconsistencies, missing edge cases, and unjustified assumptions.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+I’ll follow the spec-review checklist and read every file in `spec/` against the project rules and each other.
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/commands/review-spec.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="search" data-tool-name="glob_file_search"><details>
+<summary>Tool use: **glob_file_search** • Searched codebase "" • **9** results in **1** directory</summary>
+
+Directory: **`/Users/abhinavsrivastava/projects/C2-ticketManagement`** (9 files)
+
+| File |
+|------|
+| `spec/data-model.md` |
+| `spec/architecture.md` |
+| `spec/requirements.md` |
+| `spec/rag-ingestion.md` |
+| `spec/evaluation-strategy.md` |
+| `spec/api-contract.md` |
+| `spec/ui-flow.md` |
+| `spec/state-machine.md` |
+| `spec/test-strategy.md` |
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+Reading all spec files and their rules to identify contradictions.
+
+A known inconsistency stands out: requirements FR-1 omits category, yet data-model, ui-flow, and api-contract all treat it as required. This appears to be an intentional delta that was never reflected in requirements.
+
+Requirements FR-2 omits pagination from list responses. It specifies empty collections and required fields but not page/size. Api-standards and api-contract require a page envelope. Api-standards treats the current raw array as legacy and the envelope as the new contract. Api-contract notes this transition.
+
+Requirements lacks edge cases for pagination, such as out-of-range pages or zero-size requests. Api-contract and ui-flow partially cover these.
+
+Rag-ingestion.md decides on chunking rationale, but rules/rag-vector-store.md treats chunking as an open question. The evaluation method for that rationale lives in evaluation-strategy.md, which was written later. It is unclear whether rag-ingestion cites that method.
+
+Rag-ingestion explicitly excludes Q1-Q8 evaluation from its chunking rationale. Evaluation-strategy treats paragraph/section chunking as already decided. The two documents appear inconsistent.
+
+The chunking decision predates the evaluation method. RAG-ingestion explains the choice structurally, but evaluation-strategy treats paragraph/section chunking as already decided rather than validating it. This violates the rule requiring evidence for resolved open questions. Severity is high because the rule explicitly bans invented defaults.
+
+Requirements FR-6 omits a maximum length for comment authors. Api-contract caps them at 120 characters. Data-model allows 1–120. This appears to be underspecification rather than a strict contradiction.
+
+Evaluation-strategy omits a maximum length for questions. Requirements and ui-flow both cap them at 1000 characters.
+
+The QA endpoint path is consistent across requirements and commands.
+
+Api-contract states that list pagination is the v1 contract for new work. It defers to versioning rules when legacy clients depend on a bare array. This leaves the actual version ambiguous. Severity is low.
+
+Allowed transitions for OPEN are consistent between api-contract and the state machine table. Self-transitions are covered in state-machine. The state machine rejects duplicate transition requests atomically, but it does not explicitly define the outcome when the same valid transition is sent twice while the entity is already in that state.
+
+Concurrent double-transition requests are flagged as a concurrency edge case. The state machine does not specify how to handle two simultaneous transitions to the same state. This is a warning unless it changes observable behavior.
+
+Concurrency edge cases are ⚠️ unless the spec declares last-write-wins. A missing edge case is only ❌ if it changes observable behavior; otherwise it is a warning.
+
+Api-contract omits rules for a partial update with an empty body. Requirements mandate trimming titles and descriptions. Api-contract says omitted fields remain unchanged, but it does not clarify what happens when the entire request body is empty.
+
+ui-flow uses the ambiguous word "may" when describing omitted unchanged fields. This is a warning.
+
+Requirements do not specify how the search parameter handles SQL LIKE wildcards. Percent signs and underscores could broaden matches and change observable behavior. This is a warning.
+
+Search wildcard handling is now flagged as ❌ because it changes observable behavior. Api-contract and requirements omit rules for SQL LIKE metacharacters in the search parameter.
+
+Api-contract does not explicitly state that paging beyond the last page returns empty content with totalElements. Ui-flow does. This is a cross-spec gap rather than a contradiction.
+
+Api-contract correctly rejects size zero and values above one hundred, returning 400. Negative page numbers are also rejected with 400.
+
+Tickets with no comments appear in the evaluation corpus. Requirements do not explicitly cover this edge case. This is a warning unless requirements already address it.
+
+A question containing only stop words is absent from evaluation Q1-Q8. Requirements do not address this edge case. Rag rules mention stop words in the lexical implementation. This is a missing edge case. Observable behavior can change because a query like "what is the status" might match nothing or everything. Severity is high.
+
+Stop-word-only queries are a warning unless they change observable behavior. The current service strips stop words and returns no results when the term list empties. The specification does not define this edge case, so implementers might return all tickets instead. Severity is high because this could alter found and citations.
+
+List ordering by updatedAt is not specified anywhere. Comment ordering across identical creation times is also unaddressed. Double-submit create lacks an idempotency key, allowing duplicate tickets. Category values are intentionally left unenumerated.
+
+Requirements FR-6 omits a maximum length for comment bodies. Api-contract and data-model cap them at ten thousand characters. This is a warning.
+
+FR-17 requires that a question matching a just-created ticket retrieves it. Architecture mandates asynchronous ingestion after commit. The ask endpoint must not wait for the index. A newly created ticket may not yet exist in the vector store. This is a real contradiction.
+
+Data-model requires citation titles and statuses to come from the live Ticket row. Evaluation demands they match the fixture row exactly. Because the vector index snapshots status at ingestion time, a later update to the live row would break the test.
+
+The evaluation corpus is static, so the live-citation conflict is only theoretical. Ui-flow requires showing an error when found is true but citations are empty, which requirements treat as a defect. A cross-spec contradiction exists: ui-flow makes category required, while requirements leave it absent. Priority names still need verification against the code.
+
+Test-strategy and evaluation-strategy are internally consistent. Test-strategy forbids partial credit. Evaluation reports rank without failing on it. Cited ids must equal gold ids. Evaluation precision is one. These rules align.
+
+rag-ingestion documents chunk-to-ticket mapping via ticketId metadata and comment identifiers. This satisfies the evaluation-strategy rule that decisions must state how chunks map back to tickets for citations.
+
+rag-ingestion.md marks paragraph chunking as decided without the required evaluation method. The review-spec checklist demands both rationale and an evaluation run before closing an open question. evaluation-strategy defines the method but never ran it for chunking. This is a contradiction. Severity is high.
+
+Several numeric limits—page size twenty, maximum one hundred, title two hundred, description ten thousand, assignee one hundred twenty, question one thousand, category sixty-four, and author one hundred twenty—appear without stated rationale.
+
+Category length sixty-four and page size twenty and one hundred are inherited from api-standards, which also cites no rationale. Title, description, assignee, and question lengths are copied from existing DTOs. These inherited limits are warnings. Only category length sixty-four is flagged as ❌ because it was invented inside the spec without a reason.
+
+Architecture.md is stale relative to rag-ingestion.md. It claims exact concatenation and chunking layout are open, but rag-ingestion.md already decided the layout. This is a contradiction.
+
+Requirements.md section C still lists chunking as an open question, contradicting rag-ingestion.md which decided the split unit. Rules/rag-vector-store.md also keeps chunking open, but rag-ingestion.md never explicitly states it replaces that open question. The spec silently contradicts the rule.
+
+FR-2 omits category from list item fields even though api-contract includes it in TicketSummaryResponse. FR-5 also omits category from updates despite PATCH supporting it. Blank or whitespace categories during update lack specification. These are warnings.
+
+Empty PATCH requests with no fields present are unspecified. Whether updatedAt bumps or validation runs is undefined. This is a warning.
+
+The state machine matrix implies a 409 conflict when a user repeats a transition such as IN_PROGRESS twice. This is not explicitly spelled out. Concurrent repeats remain a warning.
+
+Comment ordering guarantees only oldest-first. Ties are not specified. This is a warning.
+
+List ordering by updatedAt also leaves ties unspecified. This is a warning.
+
+Special characters in the q parameter are flagged as a potential inconsistency.
+
+Ui-flow disables submit buttons but does not prevent duplicate submissions across separate browser tabs. This is a warning.
+
+The evaluation strategy cites a fixed stop list without defining it. This is an incomplete justification.
+
+Q6 anchors on password and VPN. A strict evaluation choice, but the password anchor may not appear if the answer only mentions reset. This is acceptable.
+
+Fixture IDs 101–105 are assumed to be stable without explicit assignment. Real databases may generate these IDs automatically, so the evaluation could fail unless fixtures set them explicitly. This is a warning.
+
+Q3’s “Okta” anchor is valid because the description contains that word.
+
+Priority is not required in citations; only ticketId, title, and status are.
+
+Page numbering is handled consistently across requirements, data-model, and ui-flow. The api-contract returns totalPages zero for empty lists, but ui-flow does not reference it, so this is not a contradiction. DELETE is absent from both api-contract and requirements. HTTP paths are uniform under /api/v1. Error codes TICKET_NOT_FOUND, INVALID_STATUS_TRANSITION, VALIDATION_FAILED, and INTERNAL_ERROR still need verification against the ErrorCode enum. Architecture splits the comment module from the ticket module.
+
+The current code places comments inside the ticket package, which aligns with the architecture proposal and the java-springboot rule for later comment and user features. This is not a silent contradiction.
+
+TicketChanged domain events are new scope and intentionally lack a named broker.
+
+Ingestion failure maps to data-model FAILED status, which is consistent.
+
+ChunkRecord is described as optional yet required for auditing, suggesting a weasel wording issue.
+
+The phrase "optional but required if" defers a decision, which is a warning. The ui-flow spec does not state whether users may override the default page size or that values above one hundred trigger a 400 error. It only notes the default is twenty.
+
+Ui-flow omits the case where a question exceeds one thousand characters, though the API likely rejects it. Requirements do not explicitly test that one hundred zero one fails, leaving a minor gap.
+
+Requirements FR-6 omits comment length limits. This is a warning.
+
+Null and blank titles both return 400 on creation. This is covered.
+
+Filtering with both status and keyword is covered.
+
+Tickets with no comments are handled in Q3 and Q4. This is covered.
+
+No-relevant-tickets scenarios appear in Q7, Q8, and FR-16. This is covered.
+
+Next I will grep the spec folder for exact line citations and weasel words. I also need to check the remaining items: FR-17 versus architecture, requirements open questions, category length, and search special characters.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="unknown" data-tool-name="ripgrep_raw_search"><details>
+<summary>Tool use: **ripgrep_raw_search**</summary>
+
+Parameters:
+
+```json
+{
+  "caseInsensitive": false,
+  "glob": "*.md",
+  "path": "/Users/abhinavsrivastava/projects/C2-ticketManagement/spec",
+  "pattern": "open question|category|just-created|chunk|page|special|stop word|10000|64|TODO|simply|obviously|etc\\.|and so on"
+}
+```
+Additional data:
+
+```json
+{
+  "isPruned": true,
+  "outputMode": "content",
+  "path": "/Users/abhinavsrivastava/projects/C2-ticketManagement/spec",
+  "pattern": "open question|category|just-created|chunk|page|special|stop word|10000|64|TODO|simply|obviously|etc\\.|and so on",
+  "topFiles": [
+    {
+      "matchCount": 9,
+      "uri": "spec/ui-flow.md"
+    },
+    {
+      "matchCount": 4,
+      "uri": "spec/test-strategy.md"
+    },
+    {
+      "matchCount": 5,
+      "uri": "spec/evaluation-strategy.md"
+    },
+    {
+      "matchCount": 16,
+      "uri": "spec/rag-ingestion.md"
+    },
+    {
+      "matchCount": 15,
+      "uri": "spec/api-contract.md"
+    },
+    {
+      "matchCount": 15,
+      "uri": "spec/architecture.md"
+    },
+    {
+      "matchCount": 20,
+      "uri": "spec/data-model.md"
+    },
+    {
+      "matchCount": 4,
+      "uri": "spec/requirements.md"
+    }
+  ],
+  "totalFiles": 8,
+  "totalMatches": 88
+}
+```
+Status: **completed**
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/rules/rag-vector-store.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/requirements.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/architecture.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+Checking whether the architecture specification's async handling of TicketChanged aligns with FR-17.
+
+Found an unjustified assumption in rag-ingestion: "Most tickets are a short description" lacks supporting evidence. Architecture line 11 contradicts rag-ingestion by claiming three RAG open questions remain undecided, while chunking was already decided. Also reviewing api-contract list versioning and trigger paragraph line numbers.
+
+FR-5 omits whether an empty PATCH still triggers updatedAt. FR-7 and api-contract omit LIKE wildcard support. Stop words are absent from the spec despite appearing in the lexical implementation.
+
+ui-flow covers page-beyond-last pagination behavior, yet api-contract does not; this is a warning. api-contract omits size-zero handling. List tie cases and concurrency scenarios lack coverage. The category limit of 64 is an unjustified number.
+
+Requirements still omit category even though data-model and ui-flow treat it as required. ui-flow is stricter than api-contract, which only mandates category once the data-model is implemented.
+
+The api-contract summary lists category as appearing on responses once the data model is implemented, which is a soft requirement. Requirements.md was never updated to match this delta, so a reader of requirements alone sees a different create contract.
+
+requirements.md §C item 1 still lists chunking as open. architecture.md lines 99, 106, and 135 also retain the open chunking question. architecture line 3 correctly leaves chunk size open, but line 106 incorrectly keeps the how open despite rag-ingestion having decided it. rules still remain open; the spec should state that rag-ingestion replaces the rule question.
+
+rag-ingestion decided chunking but never updated requirements §C or architecture. This is a cross-file inconsistency.
+
+The chunking decision lacks an evaluation method. The review checklist requires rationale and evaluation for every decided point. rag-vector-store question 1 demands a mapping from chunk to ticket. question 3 demands an evaluation method. Neither is provided.
+
+rag-ingestion cites ticket structure as rationale for chunking, yet it never ran the evaluation strategy. The review checklist requires an actual evaluation method, not just a rationale plan. This is a concrete checklist violation.
+
+FR-17 requires newly created tickets to be retrievable immediately. The architecture async handler runs after the ticket transaction commits. If retrieval is vector-based, the index is asynchronous and the ticket may not be found right away. The architecture specifies a lexical fallback until all three RAG questions are decided, and that fallback is bound to FR-14 through FR-17. This means FR-17 cannot be guaranteed for vector retrieval until the async pipeline completes.
+
+The spec never requires the ask path to fall back to the database when the vector index is stale. This leaves a behavior-changing gap: FR-17 demands immediate retrieval of a just-created ticket, but the async pipeline may not satisfy it. The evaluation strategy also allows Q7 and Q8 to pass without a cutoff threshold if the API returns found=false.
+
+Vector search without a threshold still returns the nearest neighbors. The spec requires Q7 to be empty before a cutoff exists, but never explains how the retriever rejects the nearest ticket. This is a valid open question, not a contradiction.
+
+FR-6 omits the comment author length limit of 120 characters. The data-model and api-contract both specify it, so this is a missing boundary.
+
+An empty PATCH body would still bump updatedAt and return 200. FR-5 says omitted fields stay unchanged, but the pass condition for an empty body is ambiguous.
+
+Empty PATCH bodies are ambiguous. One reading treats {} as a valid update that changes updatedAt while leaving fields untouched, which could cause stale ingestion on a no-op. This is a warning, not a contradiction.
+
+The q parameter does not allow special characters. This is a concrete inconsistency.
+
+Q1-Q8 lacks a stop-word-only question. This is a behavior-changing QA edge.
+
+ui-flow disables the submit button on double-click. No idempotency mechanism is specified.
+
+List tie cases, comment createdAt ties, and concurrency scenarios are absent from every file. These are warnings.
+
+State machine repeated transitions and terminal states are covered by the matrix. Not-found behavior is covered by FR-4, the API contract, and the UI flow.
+
+Open questions are scattered across requirements §C, architecture, rag-ingestion, evaluation, and test-strategy. The review checklist requires them to be listed in one place, so this is a traceability failure.
+
+The traceability scatter is a process defect, not a behavior-changing inconsistency, so it receives a warning rather than a block. The verdict procedure assigns severity to each checklist item.
+
+The traceability scatter is a warning, not a block, because the blocking definition does not list it as a category. The chunking contradiction, FR-17 versus async, category length 64, special characters in q, and stop-word-only questions are all ❌.
+
+rag-ingestion.md marks chunking decided, yet rules/rag-vector-store.md and review-spec require an evaluation method before closing that question. Q1–Q8 were not used to make the choice. Architecture and requirements still list chunking as open, so the decision is inconsistent with its own rules.
+
+The evaluation overlap check uses a length ≥ 4 rule and an undefined stop list. Fixture identity ids are not specified. The api-contract trailing note about bare arrays versus page envelopes leaves the v1 response shape conditional. Requirements FR-2 says empty collections are bare arrays, yet api-contract forbids bare arrays entirely. Rules/api-standards suggests v2 if clients depend on bare arrays, but the spec never states whether any client depends on them. This is an assumption, possibly a block.
+
+FR-2 permits a bare array because it never requires page envelope fields. An implementation that returns a JSON array satisfies FR-2 while violating api-contract, which forbids bare arrays entirely. This is a concrete consistency block.
+
+The word "just" in FR-17 is not a weasel; it simply means recently created. The "most tickets" assumption remains the sole inconsistency flagged for that item.
+
+Four of seven checklist edge items are fully confirmed covered. The remaining three are flagged as not addressed: empty results, no-match queries, and comment ordering ties.
+
+Only two of seven checklist edge items are fully confirmed covered: not-found behavior and state machine terminal and self-transitions. The remaining five are flagged as not fully addressed.
+
+The verdict is REVISE because blocking contradictions exist. The review will be written in the required verdict format. Evaluation Q5 correctly identifies the billing email bounce. Q6 correctly flags password reset and VPN titles.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/api-contract.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/architecture.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/requirements.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/evaluation-strategy.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+The review is complete. A specific evaluation line about unsupported sentences with four or more words was noted and will be cited if remembered.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/evaluation-strategy.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/api-contract.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+A thorough review of every spec file will follow the verdict format.
+
+The seven checklist items are being reviewed. Boundaries are only partially covered: empty PATCHes, comment lengths, and category 64 lack justification. State machine coverage appears adequate. Listing lacks special characters, out-of-bounds pages, and tie handling. Not-found cases are fully covered.
+
+QA lacks stop-word-only coverage. Concurrency is entirely absent. Comment ordering is covered but ties are missing. Two checklist items are fully confirmed. The rest are partially or completely uncovered.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+**Verdict: REVISE**
+
+The nine files in `spec/` agree on the status names, the five allowed transitions, the 20 rejected pairs, the error codes, and the QA response shape (`found`, `answer`, `citations`). They do not agree on `category`, the list body, whether chunking is still open, or whether a brand-new ticket is searchable immediately.
+
+## Blocking findings (❌)
+
+- `spec/requirements.md` FR-1, FR-2, FR-5 versus `spec/data-model.md` line 5, `spec/api-contract.md` lines 5 and 40, and `spec/ui-flow.md` line 57 — **inconsistency.** `category` is required for ingestion and on the create form, but the functional requirements never mention it. The API says it is required only once the data model is implemented; the UI says it is required now. Add `category` to FR-1, FR-2, and FR-5, or keep it out of the UI until those requirements change. The max length of 64 has no stated reason.
+
+- `spec/requirements.md` FR-2 (line 31) versus `spec/api-contract.md` line 69 — **inconsistency.** FR-2 passes if the list is any empty collection. The API forbids a bare array and requires `content`, `page`, `size`, `totalElements`, and `totalPages`. `spec/api-contract.md` line 205 then says a bare array might still be v1 if a legacy client needs it. Make the page envelope the FR-2 pass condition, and drop the conditional.
+
+- `spec/requirements.md` lines 143–147 and `spec/architecture.md` lines 99, 106, and 135 versus `spec/rag-ingestion.md` line 52 — **inconsistency.** Requirements and architecture still list chunking as an open question (whole ticket, windows, or per comment). The ingestion spec decides paragraph/section splits. One of those statements has to be updated. The decision also has no evaluation: `rules/rag-vector-store.md` requires a citation mapping and an evaluation method before that question is closed. `spec/rag-ingestion.md` states the mapping (`ticketId`, and a comment id when the chunk is a comment) but Q1–Q8 were not used to choose the split.
+
+- `spec/requirements.md` FR-17 (line 135) versus `spec/architecture.md` line 54 — **inconsistency.** FR-17 says a question about a ticket or comment that was just saved must find that ticket. Ingestion is async, after commit, and the ask path must not wait for it. A vector index can miss that ticket. Say that ask reads the database when the index is stale, or change FR-17 so “just created” means “after indexing.”
+
+- `spec/requirements.md` FR-7 and `spec/api-contract.md` line 61 — **missing edge case.** Keyword search does not define `%`, `_`, or other `LIKE` metacharacters in `q`. Those characters change which rows match. Define them as literal characters, or document the wildcard behavior.
+
+- `spec/evaluation-strategy.md` Q1–Q8 — **missing edge case.** No sample question is only stop words (“what is the status”). That question can match nothing or match every ticket, which changes `found` and the citations. Add a gold row for it.
+
+## Questions to answer (⚠️)
+
+- `spec/api-contract.md` list section — A page past the last page is specified only in `spec/ui-flow.md` line 29. The API should say the same: `200`, empty `content`, `totalElements` unchanged.
+- `spec/requirements.md` FR-2 and FR-3 — Ties on `updatedAt` (list) and equal `createdAt` (comments) have no order.
+- `spec/requirements.md` FR-5 — A `PATCH` body of `{}` is unspecified. The requirement says omitted fields stay as they are and that `updatedAt` changes on update.
+- `spec/requirements.md` FR-6 — Comment `author` and `body` length limits exist in the data model and the API (120 and 10000) but not in the requirement.
+- No file — Two creates, two patches, or a comment and a transition at the same time are unspecified. The UI disables the submit button while one request is in flight (`spec/ui-flow.md` line 59), which does not cover two tabs.
+- `spec/evaluation-strategy.md` line 51 — Q7 and Q8 must return no tickets before a similarity cutoff exists. Nearest-neighbor search always returns something. The spec does not say what forces `found=false` until that cutoff is chosen.
+- `spec/evaluation-strategy.md` line 91 — “Content word of length ≥ 4” and “a fixed stop list” are used to detect grounding failures. The stop list is not defined, and 4 is not justified.
+- `spec/evaluation-strategy.md` lines 24–28 — Gold ticket ids are fixed at 101–105. An identity column will not produce those ids unless the fixture sets them.
+- `spec/rag-ingestion.md` line 44 — The chunking recommendation uses “most tickets are a short description plus a handful of comments.” No volume or sample supports that.
+- `spec/data-model.md` line 100 — `ChunkRecord` is “optional but required if we audit citations.” Either it is part of the model or it is not.
+- Open questions for the embedding model and top-K/threshold are repeated in `spec/requirements.md` section C, `spec/architecture.md`, `spec/rag-ingestion.md`, and `spec/evaluation-strategy.md`, instead of one list with an owner.
+
+## Edge cases confirmed covered: 2/7
+
+| Checklist item | Result |
+| --- | --- |
+| Not found on get, update, transition, and comment | Covered (FR-4, API, UI, state machine) |
+| Terminal states, self-transitions, and the full invalid matrix | Covered (`spec/state-machine.md`) |
+| Field boundaries | Partial. Title, description, assignee, and question limits are stated. Empty `PATCH`, comment limits in FR-6, and the reason for category length 64 are not. |
+| Listing | Partial. Empty page, AND of `q` and `status`, case-insensitivity, no matches, and `size` outside 1–100 are stated. `q` metacharacters, page-past-the-end on the API, and `updatedAt` ties are not. |
+| QA | Partial. No-match, unknown ticket id, and tickets with no comments are in Q3, Q4, Q7, and Q8. A stop-word-only question is not. |
+| Concurrency / double-submit | Not specified |
+| Ordering ties | Not specified |
+
+---
+
+_**User**_
+
+Based on everything in spec/, generate plan.md as an ordered task list: entities → repositories → service layer with state machine enforcement → REST controllers → validation → search/filter → ingestion pipeline → embedding job → vector store integration → /api/ai/ask endpoint → frontend. Do not sequence RAG work before the CRUD/state-machine work is complete and tested.
+
+---
+
+_**Agent (auto-smart)**_
+
+> Auto routed to Grok 4.7
+
+
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+Generating plan.md from the spec/ directory. The plan will be an ordered task list covering entities, repositories, service layer with state machine enforcement, REST controllers, validation, search and filter, ingestion pipeline, embedding job, vector store integration, /api/ai/ask endpoint, and frontend. RAG work will be sequenced after CRUD and state-machine work is complete and tested.
+
+Reviewing the spec files now to capture exact sequencing constraints. Key decisions include category handling, pagination, chunking strategy, and whether to adopt async for FR-17. These findings will shape the task order.
+
+The plan will be written as plan.md at the repository root rather than inside spec/.
+
+The plan splits into three phases. Phase A covers CRUD and state machine work through search and filter. Phase B covers RAG from ingestion through the ask endpoint. Phase C covers the frontend. Each task will reference its spec file and include testing gates.
+
+Validation will be placed after REST controllers per the user's explicit ordering. State machine testing will serve as a hard gate before any RAG work begins. Blocking spec issues such as category resolution, page envelope design, and RAG sequencing will be listed as standalone tasks to prevent contradictions.
+
+Chunking strategy is decided in spec/rag-ingestion.md, yet the requirements still mark it as open. The plan will treat resolving this contradiction as a prerequisite of the ingestion task rather than inventing a separate strategy. Other spec inconsistencies will be folded into their relevant tasks instead of being expanded into a large reconciliation project before entities are defined.
+
+No separate pre-entity spec alignment task will be added; category resolution and FR updates will be folded directly into the entity definition. Existing ticket code will be reviewed to ensure the plan matches current implementation.
+
+The plan will treat existing code as completed only when it matches the spec and passes tests. Earlier file reads were unstable, so the sequence will be derived strictly from the spec without assuming prior implementations.
+
+Test gates from spec/test-strategy.md and spec/state-machine.md will be inserted before any RAG work begins. Frontend tasks will be deferred to the final phase. The ask endpoint will be implemented at POST /api/v1/qa per the spec, while /api/ai/ask will be treated as an alias if required.
+
+The embedding job and ingestion pipeline will be kept as two distinct sequenced tasks.
+
+A hard gate task will sit between search and filter and the ingestion pipeline. Validation will cover Bean Validation on DTOs wired through controllers plus a GlobalExceptionHandler.
+
+Repository tasks will include only basic CRUD methods. Search and filter queries will be deferred to the search/filter task so the repository layer does not grow prematurely. Each task will carry acceptance criteria tied directly to its spec section.
+
+A "CRUD complete" gate will require passing API tests before any ingestion work begins. The ask endpoint must be fully implemented before the frontend can proceed. Spec review blockers will be embedded directly into the relevant tasks rather than listed separately.
+
+Drafting plan.md now. A one-line precondition will sit at the top, stating that contradictory spec items are resolved inside the task that first consumes them. The ordered list itself defines the implementation sequence. Task 1 covers entities, including Ticket, Comment, TicketStatus, TicketPriority, and category from the data-model. Requirements FR-1, FR-2, and FR-5 will be updated within that same task to close the spec contradiction.
+
+Task 1 will define only core business entities: Ticket and Comment. Ingestion entities such as KnowledgeDocument, IngestionRecord, and ChunkRecord will be deferred to the ingestion pipeline task. This keeps RAG-adjacent classes out of the initial entity layer while still honoring the user's entity-first ordering.
+
+Task 2 covers repositories. It includes TicketRepository, CommentRepository, Flyway migrations, PostgreSQL setup, and basic CRUD queries. Find-by-id with comments will be included.
+
+Task 3 covers the service layer and enforces the state machine from spec/state-machine.md. TicketService will handle create, update, comment, and status transitions. All 25 parameterized state-machine pairs must pass before the team moves on. This is the hard gate for state-machine completeness.
+
+Task 4 covers REST controllers. Endpoints from api-contract will be implemented, though search parameters may be stubbed initially.
+
+Controllers will expose POST, GET by ID, PATCH, POST comment, POST status, and an unfiltered paginated list. Search and filter parameters will be deferred to the search/filter task. Validation follows controllers.
+
+Validation will wire Bean Validation constraints and a GlobalExceptionHandler that returns ProblemDetail for 400 errors. Search and filter will support literal q escaping, status AND logic, pagination edges, and tests. The gate requires all FR-1 through FR-13 tests to pass, the state machine matrix to be exhaustive, and no ingestion code to run. The ingestion pipeline task will resolve the spec contradiction by updating architecture and requirements to paragraph chunking.
+
+The ingestion pipeline will track knowledge documents, chunks, metadata, and ingestion status without invoking an embedding API. The embedding job will be async after commit and call an embedding port; the provider model remains an open evaluation decision, not hardcoded. The vector store task follows next.
+
+Vector store operations will upsert chunks with required metadata and replace by ticketId. The ask endpoint will be read-only, return citations, and handle no-match responses. FR-17 is reconciled inside this task: if the vector index is stale, the endpoint falls back to lexical search on the database. This resolves the spec contradiction without silent assumptions.
+
+The ask endpoint task will explicitly ground its contract in requirements: grounded responses, citations, no-match handling, and history stored as CRUD. An async gap will be closed at the start of this task by falling back to lexical search when the vector index does not yet contain the ticket. Frontend ui-flow screens will be placed in task 11. The plan will be kept scannable with per-task testing notes.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+The plan will follow that order and keep ingestion, embeddings, and the ask endpoint behind a hard gate: ticket CRUD and the state machine must be implemented and tested first.
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="search" data-tool-name="glob_file_search"><details>
+<summary>Tool use: **glob_file_search** • Searched codebase "" • **0** results in **1** directory</summary>
+
+Directory: **`/Users/abhinavsrivastava/projects/C2-ticketManagement`** (0 files)
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+Generating plan.md at the project root as an ordered, concrete task list.
+
+The plan will include a clear completion gate. It references existing specs and test strategy expectations without inventing new embedding models. Conflicting requirements are resolved within their own tasks rather than deferred to RAG work. Category mapping belongs in entities. Page envelopes belong in controllers. LIKE escaping belongs in search. Chunking contradictions close at ingestion task seven, which sits after the gate. FR-17 fallback logic is assigned to the ask endpoint task. The document stays tight and strictly task-list format.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2"><details>
+<summary>Tool use: **edit_file_v2** • Edit file: /Users/abhinavsrivastava/projects/C2-ticketManagement/plan.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+The plan will be ordered by dependency, with a hard gate ensuring all CRUD and state-machine work is complete and tested before any RAG work begins.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+`plan.md` is an ordered task list. Ingestion, embeddings, the vector store, and the ask endpoint stay behind a gate: ticket CRUD and the state machine must be implemented and tested first.
+
+**Tasks 1–6 (CRUD)** build entities, repositories, the service-layer state machine with all 25 transition pairs tested, REST controllers, validation, and search/filter. The list is a page envelope. `%` and `_` in a keyword are literal. `category` is added to the functional requirements in the entity task so the specs match.
+
+**Gate.** Task 7 does not start until the state-machine unit tests and the API tests (create, list, detail, update, comment, search, filter, 400, 404, 409) pass on PostgreSQL.
+
+**Tasks 7–10 (RAG)** then add the ingestion pipeline (paragraph/section chunks only, no embedder yet), the embedding job behind a configurable provider, vector-store upserts, and `POST /api/v1/qa`. A ticket that is not indexed yet is answered from the database so a just-saved ticket is still findable. The embedding model, top-K, and similarity threshold are not chosen in this plan.
+
+**Task 11** is the frontend: list, detail, create/edit, and the Q&A panel.
+
+---
+
+_**User**_
+
+Implement the Ticket and Comment JPA entities and repositories per spec/data-model.md.
+
+---
+
+_**Agent (auto-smart)**_
+
+> Auto routed to Grok 4.7
+
+
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+Implementing Ticket and Comment JPA entities and repositories per spec/data-model.md.
+
+Reviewing the data model spec and existing codebase. The plan covers Ticket fields, Comment fields, status and priority enums, and repositories for saving, finding by ID, and fetching comments. Existing patterns will be followed.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+I’ll read the data model and the current ticket and comment classes so the entities and repositories match the spec and the existing Spring layout.
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/data-model.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="search" data-tool-name="glob_file_search"><details>
+<summary>Tool use: **glob_file_search** • Searched codebase "" • **31** results in **1** directory</summary>
+
+Directory: **`/Users/abhinavsrivastava/projects/C2-ticketManagement`** (31 files)
+
+| File |
+|------|
+| `src/main/java/com/company/ticketmanagement/TicketManagementApplication.java` |
+| `src/test/java/com/company/ticketmanagement/ticket/application/TicketServiceTest.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/dto/TicketQaRequest.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/dto/TicketQaResponse.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/domain/TicketStatus.java` |
+| `src/test/java/com/company/ticketmanagement/ticket/api/TicketApiIT.java` |
+| `src/test/java/com/company/ticketmanagement/ticket/application/TicketQaServiceTest.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/application/TicketQaService.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/infrastructure/TicketRepository.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/domain/Ticket.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/dto/TransitionTicketRequest.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/domain/TicketNotFoundException.java` |
+| `src/main/java/com/company/ticketmanagement/common/exception/AppException.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/domain/Comment.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/dto/AddCommentRequest.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/dto/TicketSummaryResponse.java` |
+| `src/main/java/com/company/ticketmanagement/config/CorsConfig.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/application/TicketService.java` |
+| `src/main/java/com/company/ticketmanagement/common/exception/ErrorCode.java` |
+| `src/main/resources/db/migration/V1__init.sql` |
+| `src/main/java/com/company/ticketmanagement/ticket/dto/CreateTicketRequest.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/domain/TicketPriority.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/mapper/TicketMapper.java` |
+| `src/main/java/com/company/ticketmanagement/common/exception/GlobalExceptionHandler.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/api/TicketQaController.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/dto/UpdateTicketRequest.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/dto/TicketResponse.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/api/TicketController.java` |
+| `src/main/resources/application.yml` |
+| `src/main/java/com/company/ticketmanagement/ticket/domain/TicketStateConflictException.java` |
+| `src/main/java/com/company/ticketmanagement/ticket/dto/CommentResponse.java` |
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/rules/java-springboot.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+The architecture spec suggests a separate comment module, but the data-model.md specification requires implementing both Ticket and Comment JPA entities and repositories.
+
+Existing code places Comment under ticket.domain and TicketRepository under ticket.infrastructure. The minimal change adds category to Ticket, aligns Comment with the data model, and creates CommentRepository if absent.
+
+Adding a required `category` field will break existing constructors, DTOs, mappers, services, and tests. Those call sites must be updated to keep the code compiling. This is necessary for the implementation to build, not scope creep.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2**</summary>
+File not found
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2**</summary>
+File not found
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2**</summary>
+File not found
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2**</summary>
+File not found
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2**</summary>
+File not found
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2**</summary>
+File not found
+</details></tool-use>
