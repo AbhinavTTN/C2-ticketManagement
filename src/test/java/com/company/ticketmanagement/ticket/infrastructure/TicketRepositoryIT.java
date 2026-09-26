@@ -3,8 +3,10 @@ package com.company.ticketmanagement.ticket.infrastructure;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -67,6 +69,57 @@ class TicketRepositoryIT {
     @Test
     void findByIdWithComments_whenMissing_isEmpty() {
         assertThat(ticketRepository.findByIdWithComments(999_999L)).isEmpty();
+    }
+
+    @Test
+    void search_matchesTitleDescriptionAndCommentsIgnoringCase() {
+        Ticket billing = saved("Email bounce", "Outbound mail");
+        billing.addComment(new Comment("Jordan", "Checked SMTP logs", Instant.parse("2026-09-24T09:00:00Z")));
+        ticketRepository.saveAndFlush(billing);
+        Ticket printer = saved("Printer jam", "Floor 3");
+        entityManager.clear();
+
+        assertThat(ids(null, "%email%")).containsExactly(billing.getId());
+        assertThat(ids(null, "%OUTBOUND%")).containsExactly(billing.getId());
+        assertThat(ids(null, "%smtp%")).containsExactly(billing.getId());
+        assertThat(ids(null, "%jordan%")).containsExactly(billing.getId());
+        assertThat(ids(null, "%lunar%")).isEmpty();
+        assertThat(ids(null, null)).containsExactlyInAnyOrder(billing.getId(), printer.getId());
+    }
+
+    @Test
+    void search_appliesStatusAndKeywordTogether() {
+        Ticket open = saved("VPN timeout", "Office VPN drops hourly");
+        Ticket closed = saved("VPN docs", "How to install the client");
+        closed.transitionTo(TicketStatus.IN_PROGRESS);
+        closed.transitionTo(TicketStatus.RESOLVED);
+        closed.transitionTo(TicketStatus.CLOSED);
+        ticketRepository.saveAndFlush(closed);
+        entityManager.clear();
+
+        assertThat(ids(TicketStatus.OPEN, "%vpn%")).containsExactly(open.getId());
+        assertThat(ids(TicketStatus.CLOSED, "%vpn%")).containsExactly(closed.getId());
+        assertThat(ids(TicketStatus.CANCELLED, "%vpn%")).isEmpty();
+    }
+
+    @Test
+    void search_treatsPercentAsLiteral() {
+        Ticket literal = saved("100% done", "capacity");
+        saved("100X done", "capacity");
+        entityManager.clear();
+
+        assertThat(ids(null, "%100\\% done%")).containsExactly(literal.getId());
+    }
+
+    private Ticket saved(String title, String description) {
+        return ticketRepository.saveAndFlush(
+                new Ticket(title, description, TicketPriority.MEDIUM, null, "ops"));
+    }
+
+    private List<Long> ids(TicketStatus status, String keyword) {
+        return ticketRepository.search(status, keyword, PageRequest.of(0, 20))
+                .map(Ticket::getId)
+                .getContent();
     }
 
     @Test

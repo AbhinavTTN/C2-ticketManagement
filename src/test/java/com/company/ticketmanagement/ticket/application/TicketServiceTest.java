@@ -107,6 +107,17 @@ class TicketServiceTest {
     }
 
     @Test
+    void list_appliesStatusAndOmitsBlankKeyword() {
+        given(ticketRepository.search(eq(TicketStatus.OPEN), isNull(), any(Pageable.class)))
+                .willReturn(new PageImpl<>(java.util.List.of(), PageRequest.of(0, 20), 0));
+
+        var page = ticketService.list(TicketStatus.OPEN, "   ", 0, 20);
+
+        assertThat(page.totalElements()).isZero();
+        verify(ticketRepository).search(eq(TicketStatus.OPEN), isNull(), any(Pageable.class));
+    }
+
+    @Test
     void list_escapesLikeMetacharacters() {
         given(ticketRepository.search(isNull(), eq("%100\\%%"), any(Pageable.class)))
                 .willReturn(new PageImpl<>(java.util.List.of(), PageRequest.of(0, 20), 0));
