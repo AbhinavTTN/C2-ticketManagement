@@ -102,9 +102,10 @@ public class Ticket {
     }
 
     public void transitionTo(TicketStatus target) {
-        if (!status.canTransitionTo(target)) {
-            throw new TicketStateConflictException(status, target);
-        }
+        TicketStateMachine.transition(this, target);
+    }
+
+    void applyStatus(TicketStatus target) {
         this.status = target;
         this.updatedAt = Instant.now();
     }

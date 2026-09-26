@@ -33,7 +33,8 @@ class TicketTest {
         var updatedAt = ticket.getUpdatedAt();
 
         assertThatThrownBy(() -> ticket.transitionTo(to))
-                .isInstanceOf(TicketStateConflictException.class);
+                .isInstanceOf(TicketStateConflictException.class)
+                .hasMessage("Cannot transition a ticket from %s to %s.".formatted(from, to));
         assertThat(ticket.getStatus()).isEqualTo(from);
         assertThat(ticket.getUpdatedAt()).isEqualTo(updatedAt);
     }
