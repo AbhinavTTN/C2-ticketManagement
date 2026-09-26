@@ -1816,6 +1816,354 @@ _**Agent (auto-smart)**_
 
 <tool-use data-tool-type="write" data-tool-name="edit_file_v2"><details>
 <summary>Tool use: **edit_file_v2** • Edit file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/state-machine.md</summary>
-Status: **loading**
 
 </details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2"><details>
+<summary>Tool use: **edit_file_v2** • Edit file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/api-contract.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+Both spec files are written.
+
+**`spec/state-machine.md`**
+- Valid transitions exactly as required: `OPEN→IN_PROGRESS`, `OPEN→CANCELLED`, `IN_PROGRESS→RESOLVED`, `IN_PROGRESS→CANCELLED`, `RESOLVED→CLOSED`.
+- **All 20 invalid pairs** listed explicitly per source state (including self-transitions and everything out of `CLOSED`/`CANCELLED`), plus a full 5×5 ✓/✗ matrix. The brief’s three examples (`CLOSED→OPEN`, `RESOLVED→OPEN`, `CANCELLED→OPEN`) are covered.
+- Rules: status changes only via `POST .../status`, rejection is atomic (409, status unchanged), unknown id is 404 not a transition error.
+
+**`spec/api-contract.md`**
+- All six endpoints: create (201), list/search/filter (200, page envelope with `page`/`size`/`totalElements`/`totalPages`, `status`+`q` AND’d, `updatedAt` desc), view detail (200, comments + `allowedTransitions`), update via PATCH (200, no status changes), add comment (201), transition (200/409).
+- Request/response JSON examples, field validation limits matching FR-1/FR-6, `TicketResponse`/`TicketSummaryResponse`/`CommentResponse` schemas, and the `ProblemDetail` error table (400/404/409/500).
+- Consistent with the other specs: `category` included per `spec/data-model.md`; no `DELETE` in v1 (cancel via transition); QA endpoint excluded by design.
+
+**Files created:** `spec/state-machine.md`, `spec/api-contract.md`
+
+---
+
+_**User**_
+
+Updaye spec/state-machine.md: formally define the ticket status transition table (OPEN→IN_PROGRESS→RESOLVED→CLOSED, OPEN→CANCELLED, IN_PROGRESS→CANCELLED) and explicitly list every invalid transition that must be rejected.
+Write spec/api-contract.md covering all CRUD endpoints (create, list, view, update, comment, search, filter), and 
+spec/rag-ingestion.md: compare paragraph-based vs fixed-size chunking for ticket text (description + comments + resolution notes), and recommend one with explicit reasoning tied to how ticket data is structured.
+
+---
+
+_**Agent (auto-smart)**_
+
+> Auto routed to Grok 4.7
+
+
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+I'll begin by updating spec/state-machine.md to formally define the ticket status transition table and explicitly reject every invalid transition.
+
+I need to check the existing files and domain specs first. Then I'll update the state machine and write the API contract and RAG ingestion documents.
+
+Reviewing the current files and ticket domain to understand how description, comments, and resolution notes are structured. This will ground the chunking recommendation in actual data patterns.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+I’ll read the current state-machine and API specs plus how ticket text is actually stored, then update the transition table and write the chunking recommendation against that structure.
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/state-machine.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/api-contract.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/data-model.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/architecture.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/requirements.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+The state machine spec already defines the ticket status transition table and invalid transitions.
+
+I will reformat the invalid transitions into a numbered explicit list of all 20 pairs. The API contract spec already covers all required CRUD endpoints.
+
+I will also draft spec/rag-ingestion.md comparing paragraph-based and fixed-size chunking for ticket text, then recommend one approach with explicit reasoning tied to ticket data structure.
+
+Search and filter will be documented as query parameters on the list endpoint. The API contract will be reviewed for completeness without redundant rewriting.
+
+I will add a brief clarifying section to the API contract so search and filter appear as explicit operations on the list endpoint.
+
+For the RAG ingestion spec, I am analyzing the ticket data model. The description field contains 1–10,000 characters of free text, often spanning multiple paragraphs. This structural detail will guide the comparison between paragraph-based and fixed-size chunking.
+
+Comments are discrete utterances, not continuous documents. Resolution notes are not a first-class data model field; they are implied by status changes and typically live inside comments or description updates. I will not invent a resolutionNotes column for the chunking comparison.
+
+Paragraph-based chunking splits on blank lines and paragraph boundaries. The ticket description may be a single paragraph or several.
+
+Paragraph-based chunking preserves the coherence of individual comments as complete units. However, it produces variable chunk sizes. Tickets lacking paragraph breaks collapse into a single oversized chunk, while brief comments fragment into tiny pieces. This inconsistency degrades embedding quality because small chunks carry weak semantics and large chunks dilute similarity. Fixed-size chunking would enforce uniform sizing instead.
+
+Fixed-size chunking risks splitting across comment boundaries, mixing authors and losing contextual coherence. It also fragments mid-sentence, mid-error-message, or mid-stack-trace. The benefit is bounded embedding size and predictable token cost. Ticket data is structured as discrete sections rather than a continuous article.
+
+The recommendation is paragraph-based chunking. Each section is either the description or a single comment. Comments are atomic units and must not be merged into sliding windows. Resolution notes are not a separate column.
+
+I will recommend paragraph-based chunking without inventing a numeric window size. A maximum chunk size remains an open question. The recommendation rests on the strategy itself.
+
+Fixed-size windows risk gluing a comment’s tail to the next comment’s head. Retrieval could then misattribute resolution text to the wrong author or blend problem and fix text within a single vector. Paragraph boundaries align with how agents naturally write: blank lines separate steps, and each comment is typically one update. This keeps description and comments semantically distinct.
+
+Paragraph-based chunking preserves citation context better than fixed-size windows. Each chunk retains its comment source, so answers can quote specific comments directly. Fixed-size chunking is better suited to long homogeneous prose, but ticket text is heterogeneous and bounded per field. A lone caveat remains: a description with no newlines becomes one oversized chunk, potentially exceeding embedder limits.
+
+Paragraph-based chunking is the primary strategy. Fixed-size chunking is rejected as the default splitter. A fallback split is permitted only when a single paragraph or comment exceeds the model context, though the exact size limit remains an open parameter. The knowledge document will label sections with explicit titles, description paragraphs, and comment headers that include author and timestamp.
+
+Paragraph boundaries are semantic, so overlap is unnecessary and should not be invented. A comment containing multiple paragraphs becomes one chunk per paragraph, still tagged with its comment identifier and author. I will not update architecture.md since that was not requested.
+
+The rag-ingestion document will resolve the chunking-strategy open question by adopting paragraph-based splitting. Numeric maximum size remains an open parameter. I will not rewrite rules/rag-vector-store.md or spec/requirements.md unless consistency demands it.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+The transition spec groups invalid pairs, and there is no dedicated resolution-notes field—comments and the description hold that text. I’ll make every rejected transition explicit and write the chunking comparison against that structure.
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2"><details>
+<summary>Tool use: **edit_file_v2** • Edit file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/state-machine.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2"><details>
+<summary>Tool use: **edit_file_v2** • Edit file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/api-contract.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2"><details>
+<summary>Tool use: **edit_file_v2** • Edit file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/api-contract.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2"><details>
+<summary>Tool use: **edit_file_v2** • Edit file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/rag-ingestion.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+Updating the state machine specification with formal ticket status transitions and invalid transition rejection rules. Revising the API contract to cover all CRUD endpoints and adding search and filter sections. Drafting the RAG ingestion document comparing paragraph-based and fixed-size chunking for ticket text.
+
+The RAG ingestion document now recommends paragraph-based chunking over fixed-size chunking for ticket text, with explicit reasoning tied to how ticket data is structured. Model selection and top-k parameters remain unresolved, consistent with the architecture's open chunk size caveat.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+`spec/state-machine.md` now lists every rejected transition individually. `spec/api-contract.md` covers the ticket CRUD surface, and `spec/rag-ingestion.md` recommends paragraph/section chunking.
+
+**State machine.** The five allowed transitions are unchanged: `OPEN→IN_PROGRESS`, `OPEN→CANCELLED`, `IN_PROGRESS→RESOLVED`, `IN_PROGRESS→CANCELLED`, `RESOLVED→CLOSED`. The other 20 pairs are now a numbered list, including self-transitions and the required examples `CLOSED→OPEN`, `RESOLVED→OPEN`, and `CANCELLED→OPEN`. Each rejected pair returns HTTP 409 and leaves the stored status unchanged.
+
+**API contract.** Create, list, view, update, and comment each have request and response shapes, status codes, and error codes. Search (`q`) and filter (`status`) are query parameters on `GET /api/v1/tickets`, combined with AND, applied before paging.
+
+**Chunking.** There is no `resolutionNotes` column. Resolution text lives in comments, and sometimes in an edited description. Paragraph/section chunking is the recommendation: one chunk per description paragraph, one chunk per comment, with no merging across those boundaries. Fixed-size windows cut through comment boundaries and shift every later chunk when an early comment changes. A maximum length for one oversized paragraph is still unset, because it depends on the embedding model, which is not chosen yet.
+
+---
+
+_**User**_
+
+Write spec/evaluation-strategy.md: define how retrieval quality will be judged (sample questions with expected ticket IDs) and how grounding failures will be detected and spec/test-strategy.md covering both deterministic logic (state machine) and probabilistic AI output (retrieval quality).
+
+---
+
+_**Agent (auto-smart)**_
+
+> Auto routed to Grok 4.7
+
+
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+I need to draft two specification documents. One defines retrieval quality metrics and grounding failure detection. The other covers deterministic state machine logic and probabilistic AI output evaluation.
+
+The documents should draw from existing specifications including requirements, RAG ingestion, state machine, testing rules, and review commands. Embedding models, top-K values, and similarity thresholds will remain undefined since these are still open questions.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+I’ll read the QA contract, state machine, and chunking decision so the evaluation and test strategies match how retrieval and transitions are already specified.
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/rag-ingestion.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/commands/review-rag-output.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/rules/testing.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/state-machine.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+Planning evaluation-strategy.md with sample questions, expected ticket IDs, and grounding failure detection methods.
+
+test-strategy.md will separate deterministic state-machine logic from probabilistic retrieval. Synthetic evaluation fixtures will provide stable expected ticket IDs. Metrics will use open recall@k thresholds rather than fixed top-K values, reporting whether expected IDs appear in retrieved sets.
+
+Grounding detection will use automated checks from review-rag-output. Deterministic checks verify claim traceability, citation matches, and no-match correctness. Exact quote verification is fully automatic. Paraphrased claims require human review or labeled checks.
+
+Concrete evaluation fixtures are defined with stable IDs 101 through 104. Ticket 101 covers password reset and SMTP logs. Ticket 102 covers an urgent SSO outage. Ticket 103 covers a VPN timeout. Ticket 104 is a distractor. Semantic entailment checks will remain advisory rather than fully automatic.
+
+Ticket 105 resolves an email bounce billing SPF issue. The evaluation corpus now includes eight sample questions with expected ticket IDs. These cover password reset, SSO outage, VPN timeout, a distractor, and multi-ticket queries. Retrieval quality metrics will follow.
+
+Retrieval quality will be judged by whether the retriever returns the expected ticket IDs. Grounding will be judged by whether the final answer cites only those retrieved tickets. For probabilistic outputs, exact answer text is not required; instead, the system must achieve set equality or meet recall and precision thresholds on the ticket ID sets.
+
+Once the top-K threshold is fixed, gold ticket IDs must appear in the retrieved results. Before K is chosen, evaluation records the rank of the first gold hit and whether all expected IDs are present. A deterministic pass bar checks that every gold ID appears in the final citations. Because embedding retrieval can vary across model versions, the evaluation set must be re-run whenever the model or threshold changes.
+
+Five grounding failure patterns are defined. Structural mismatches include found=true with empty citations, found=false with citations, and no-match phrases mixed with citations. Citation integrity flags missing database rows or title and status mismatches. Claim audit splits answers into claims and requires each to have a supporting span in a cited ticket. Distractor detection catches ticket IDs mentioned outside citations. Fabricated resolution detects fixes claimed without evidence in comments or descriptions. All checks run automatically in CI against the fixture corpus.
+
+For the deterministic eval fixture, grounding will be checked by requiring the answer to contain a designated anchor phrase from the gold ticket and to exclude known absent phrases. This anchors probabilistic outputs to the synthetic data without requiring exact wording.
+
+Full claim-level review via commands/review-rag-output.md is reserved for release audits and sample audits, not routine unit tests.
+
+test-strategy.md defines two test layers. Deterministic logic—state machine exhaustiveness, validation, CRUD, and persistence—must pass 100% under JUnit; flakiness is treated as a bug. Probabilistic retrieval is evaluated separately through a dedicated suite such as EvaluationIT, using recall and precision metrics on ticket IDs, grounding anchors, and no-match checks, without asserting exact answer strings.
+
+QA unit tests will mock the retriever to keep deterministic coverage. Live embedding APIs are excluded from unit tests per rules/testing.md. The deterministic suite validates state machines, API contracts, and validation. Probabilistic retrieval evaluation will define its own corpus, questions, metrics, and build-failure conditions.
+
+No preset top-K threshold will be baked into the evaluation strategy. A pass condition will require every gold ticket ID to appear in the retrieved ticket set, and no unlisted ID to be cited. If the retriever returns only a small top-K and misses gold IDs, that failure signals the need to raise K rather than enforcing a fixed cutoff. Multi-ticket queries will ignore result ordering. The sample corpus will be explicit enough to implement concrete fixtures.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2"><details>
+<summary>Tool use: **edit_file_v2** • Edit file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/evaluation-strategy.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="write" data-tool-name="edit_file_v2"><details>
+<summary>Tool use: **edit_file_v2** • Edit file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/test-strategy.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+Two specification files are needed. One defines retrieval quality metrics and grounding failure detection. The other covers deterministic state machine logic and probabilistic AI output testing.
+
+Both specification files have been drafted.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+`spec/evaluation-strategy.md` and `spec/test-strategy.md` are in place. Retrieval is scored on ticket IDs, and the state machine stays an exact pass/fail matrix.
+
+**Evaluation.** A frozen fixture of five tickets (101–105, including a printer-jam distractor) and eight questions define the gold set. Q1–Q6 expect specific ids, including a comment-only SMTP hit, an Okta paraphrase, ticket #103 by id, an SPF fix that lives in a comment, and a two-ticket VPN-or-password question. Q7 and Q8 expect no tickets and `found=false`. A run passes only when every gold id is retrieved and every citation is in that gold set. The rank of the first gold hit is recorded so top-K can be chosen later. It is not set here.
+
+**Grounding failures** are detected separately from retrieval: wrong `found` flag, empty citations on a hit, citations on a no-match, ghost or stale citation labels, distractor ticket 104, missing anchor phrases copied from stored text, and sentences that do not overlap the gold ticket’s description or comments.
+
+**Test strategy.** The state machine is deterministic and runs on every build: all 5 valid transitions and all 20 invalid ones, plus a completeness check if a status is added. The QA service is also unit-tested with a fake retriever, so citations and the no-match message are exact without calling an embedding API. The Q1–Q8 corpus is a separate evaluation run, scored on id sets and anchors, not on exact answer wording.
+
+---
+
+_**User**_
+
+Write spec/ui-flow.md for the ticket list, detail view, create/edit forms, and the AI Q&A panel.
+
+---
+
+_**Agent (auto-smart)**_
+
+> Auto routed to Grok 4.7
+
+
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+Drafting spec/ui-flow.md for the ticket list, detail view, create/edit forms, and AI Q&A panel.
+
+Reviewing existing specs—requirements, API contract, state machine, and QA response shape—to ensure the UI flow aligns with the API and avoids out-of-scope features.
+</details></think>
+
+_**Agent (auto-smart)**_
+
+I’ll read the API contract, requirements, and QA response shape so the UI flow matches the endpoints and error behavior already specified.
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/api-contract.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/requirements.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<tool-use data-tool-type="read" data-tool-name="read_file_v2"><details>
+<summary>Tool use: **read_file_v2** • Read file: /Users/abhinavsrivastava/projects/C2-ticketManagement/spec/state-machine.md</summary>
+
+</details></tool-use>
+
+_**Agent (auto-smart)**_
+
+<think><details><summary>Thought Process</summary>
+Drafting a UI flow specification for the ticket list, detail view, create/edit forms, and AI Q&A panel.
+
+The spec defines pagination, search, filters, empty states, and row clicks for the ticket list. The detail view shows full fields, oldest-first comments, transition actions, and comment input. Forms include validation from ProblemDetail fields; status is excluded from edits. The AI panel displays questions, answers, citations, and no-match states. It remains read-only. Auth is omitted. Routes may be proposed as the UI contract.
+
+No frontend files exist yet, so the spec proposes UI routes aligned with the API.
+</details></think>

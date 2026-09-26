@@ -28,17 +28,32 @@ Success: HTTP `200`, stored status becomes the target, `updatedAt` advances. Any
 
 ## Invalid transitions (must be rejected)
 
-All 20 pairs below return HTTP `409` with `code=INVALID_STATUS_TRANSITION`; stored status does not change. Self-transitions are invalid.
+There are 5 states, so 25 ordered pairs. Five are valid (above). The other **20** must be rejected: HTTP `409`, `code=INVALID_STATUS_TRANSITION`, stored status unchanged. Self-transitions are invalid.
 
-| From | Invalid targets |
-| --- | --- |
-| `OPEN` | `OPEN`, `RESOLVED`, `CLOSED` |
-| `IN_PROGRESS` | `OPEN`, `IN_PROGRESS`, `CLOSED` |
-| `RESOLVED` | `OPEN`, `IN_PROGRESS`, `RESOLVED`, `CANCELLED` |
-| `CLOSED` | `OPEN`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`, `CANCELLED` |
-| `CANCELLED` | `OPEN`, `IN_PROGRESS`, `RESOLVED`, `CLOSED`, `CANCELLED` |
+| # | From | To | Why rejected |
+| --- | --- | --- | --- |
+| 1 | `OPEN` | `OPEN` | self-transition |
+| 2 | `OPEN` | `RESOLVED` | skips `IN_PROGRESS` |
+| 3 | `OPEN` | `CLOSED` | skips `IN_PROGRESS` and `RESOLVED` |
+| 4 | `IN_PROGRESS` | `OPEN` | no reverse path |
+| 5 | `IN_PROGRESS` | `IN_PROGRESS` | self-transition |
+| 6 | `IN_PROGRESS` | `CLOSED` | skips `RESOLVED` |
+| 7 | `RESOLVED` | `OPEN` | required example; no reverse path |
+| 8 | `RESOLVED` | `IN_PROGRESS` | no reverse path |
+| 9 | `RESOLVED` | `RESOLVED` | self-transition |
+| 10 | `RESOLVED` | `CANCELLED` | cancel only from `OPEN` or `IN_PROGRESS` |
+| 11 | `CLOSED` | `OPEN` | required example; terminal |
+| 12 | `CLOSED` | `IN_PROGRESS` | terminal |
+| 13 | `CLOSED` | `RESOLVED` | terminal |
+| 14 | `CLOSED` | `CLOSED` | terminal; self-transition |
+| 15 | `CLOSED` | `CANCELLED` | terminal |
+| 16 | `CANCELLED` | `OPEN` | required example; terminal |
+| 17 | `CANCELLED` | `IN_PROGRESS` | terminal |
+| 18 | `CANCELLED` | `RESOLVED` | terminal |
+| 19 | `CANCELLED` | `CLOSED` | terminal; close only from `RESOLVED` |
+| 20 | `CANCELLED` | `CANCELLED` | terminal; self-transition |
 
-Required examples (from the product brief): `CLOSED` → `OPEN`, `RESOLVED` → `OPEN`, `CANCELLED` → `OPEN` — all in the table above.
+Any new `TicketStatus` value is invalid until it is added to the valid table and this list is regenerated in the same change.
 
 ## Full matrix (✓ = allowed, ✗ = rejected)
 

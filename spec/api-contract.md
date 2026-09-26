@@ -43,7 +43,9 @@ HTTP contract for ticket CRUD, comments, search, and filter. Satisfies FR-1–FR
 
 **Errors:** `400 VALIDATION_FAILED` (missing/blank/too-long fields, bad enum, unreadable JSON).
 
-## List, search, filter — `GET /api/v1/tickets`
+## List — `GET /api/v1/tickets`
+
+Search (FR-7) and filter (FR-8) are query parameters on this endpoint, not separate paths.
 
 **Query params**
 
@@ -54,7 +56,15 @@ HTTP contract for ticket CRUD, comments, search, and filter. Satisfies FR-1–FR
 | `page` | `0` | 0-based; negative → `400` |
 | `size` | `20` | 1–100; out of range → `400` |
 
-`status` and `q` combine with AND. Filters apply before paging. Default sort: `updatedAt` descending.
+### Search
+
+`q` is the keyword search. A ticket matches when the keyword appears, case-insensitive, in `title`, `description`, or any comment `author` or `body`. Blank `q` is omitted (no keyword constraint). No matches → `200` and an empty page.
+
+### Filter
+
+`status` filters to one `TicketStatus`. An unrecognized value → `400 VALIDATION_FAILED`. Omitted `status` means all statuses.
+
+`status` and `q` combine with AND. Both apply before paging. Default sort: `updatedAt` descending.
 
 **Response `200`** — page envelope (never a bare array):
 
