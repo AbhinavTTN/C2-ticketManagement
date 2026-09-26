@@ -30,10 +30,15 @@ public class TicketService {
 
     private final TicketRepository ticketRepository;
     private final TicketMapper ticketMapper;
+    private final TicketChangeNotifier ticketChangeNotifier;
 
-    public TicketService(TicketRepository ticketRepository, TicketMapper ticketMapper) {
+    public TicketService(
+            TicketRepository ticketRepository,
+            TicketMapper ticketMapper,
+            TicketChangeNotifier ticketChangeNotifier) {
         this.ticketRepository = ticketRepository;
         this.ticketMapper = ticketMapper;
+        this.ticketChangeNotifier = ticketChangeNotifier;
     }
 
     @Transactional
@@ -44,7 +49,9 @@ public class TicketService {
                 request.priority(),
                 request.assignee(),
                 request.category());
-        return ticketMapper.toResponse(ticketRepository.save(ticket));
+        Ticket saved = ticketRepository.save(ticket);
+        ticketChangeNotifier.changed(saved.getId());
+        return ticketMapper.toResponse(saved);
     }
 
     public TicketPageResponse list(TicketStatus status, String keyword, int page, int size) {
@@ -77,6 +84,7 @@ public class TicketService {
                 request.priority(),
                 request.assignee(),
                 request.category());
+        ticketChangeNotifier.changed(id);
         return ticketMapper.toResponse(ticket);
     }
 
@@ -84,6 +92,7 @@ public class TicketService {
     public TicketResponse addComment(Long id, AddCommentRequest request) {
         Ticket ticket = requireTicket(id);
         ticket.addComment(new Comment(request.author(), request.body()));
+        ticketChangeNotifier.changed(id);
         return ticketMapper.toResponse(ticket);
     }
 
@@ -91,6 +100,7 @@ public class TicketService {
     public TicketResponse transition(Long id, TransitionTicketRequest request) {
         Ticket ticket = requireTicket(id);
         ticket.transitionTo(request.status());
+        ticketChangeNotifier.changed(id);
         return ticketMapper.toResponse(ticket);
     }
 

@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import com.company.ticketmanagement.ask.application.LanguageModelNotConfiguredException;
 import com.company.ticketmanagement.ticket.domain.TicketNotFoundException;
 import com.company.ticketmanagement.ticket.domain.TicketStateConflictException;
 
@@ -73,6 +74,14 @@ public class GlobalExceptionHandler {
                 "Parameter '%s' has an invalid value.".formatted(ex.getName()));
         body.setTitle("Invalid parameter");
         body.setProperty("code", ErrorCode.VALIDATION_FAILED.name());
+        return body;
+    }
+
+    @ExceptionHandler(LanguageModelNotConfiguredException.class)
+    ProblemDetail languageModel(LanguageModelNotConfiguredException ex) {
+        ProblemDetail body = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage());
+        body.setTitle("Language model is not configured");
+        body.setProperty("code", ex.getCode().name());
         return body;
     }
 

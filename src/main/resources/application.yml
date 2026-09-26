@@ -9,3 +9,19 @@ spring:
           time_zone: UTC
   flyway:
     enabled: true
+
+app:
+  ingestion:
+    retry-ms: 60000
+    # Width of the local hash embedder. A production model is not chosen yet;
+    # changing this requires a new migration because pgvector columns are fixed-width.
+    embedding-dimensions: 32
+  ask:
+    # Retrieval width and cutoff. Change them here; Java does not hardcode them.
+    # These values have not been accepted by the Q1–Q8 evaluation.
+    top-k: 5
+    similarity-threshold: 0.25
+  llm:
+    base-url: ${LLM_BASE_URL:}
+    model: ${LLM_MODEL:}
+    api-key: ${LLM_API_KEY:}

@@ -40,11 +40,14 @@ class TicketServiceTest {
     @Mock
     TicketRepository ticketRepository;
 
+    @Mock
+    TicketChangeNotifier ticketChangeNotifier;
+
     TicketService ticketService;
 
     @BeforeEach
     void setUp() {
-        ticketService = new TicketService(ticketRepository, new TicketMapper());
+        ticketService = new TicketService(ticketRepository, new TicketMapper(), ticketChangeNotifier);
     }
 
     @Test
@@ -85,6 +88,7 @@ class TicketServiceTest {
         assertThat(response.assignee()).isNull();
         assertThat(response.category()).isEqualTo("ops");
         assertThat(response.status()).isEqualTo(TicketStatus.OPEN);
+        verify(ticketChangeNotifier).changed(1L);
     }
 
     @Test
@@ -97,6 +101,7 @@ class TicketServiceTest {
         assertThat(response.comments()).hasSize(1);
         assertThat(response.comments().getFirst().author()).isEqualTo("Jordan");
         assertThat(response.comments().getFirst().body()).isEqualTo("SPF fix");
+        verify(ticketChangeNotifier).changed(1L);
     }
 
     @Test
@@ -141,5 +146,17 @@ class TicketServiceTest {
                 .hasMessage("Cannot transition a ticket from OPEN to CLOSED.");
         assertThat(ticket.getStatus()).isEqualTo(TicketStatus.OPEN);
         verify(ticketRepository, never()).save(any());
+        verify(ticketChangeNotifier, never()).changed(any());
+    }
+
+    @Test
+    void transition_whenValid_changesStatusAndRequestsReingestion() {
+        Ticket ticket = new Ticket("Title", "Desc", TicketPriority.LOW, null, "ops");
+        given(ticketRepository.findByIdWithComments(1L)).willReturn(Optional.of(ticket));
+
+        var response = ticketService.transition(1L, new TransitionTicketRequest(TicketStatus.IN_PROGRESS));
+
+        assertThat(response.status()).isEqualTo(TicketStatus.IN_PROGRESS);
+        verify(ticketChangeNotifier).changed(1L);
     }
 }
