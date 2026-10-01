@@ -26,6 +26,11 @@ interface ChatMessage {
   timestamp: Date;
 }
 
+function firstInvalidField(fields: Record<string, string>): 'title' | 'description' | 'priority' | 'category' | 'assignee' | 'author' | 'body' | null {
+  const order = ['title', 'description', 'priority', 'category', 'assignee', 'author', 'body'] as const;
+  return order.find((field) => fields[field]) ?? null;
+}
+
 function assistantMessage(text: string, ticket?: Ticket): ChatMessage {
   return {
     id: Math.random().toString(36).substring(7),
@@ -119,19 +124,49 @@ export default function AiChatPanel() {
         notifyTicketsChanged();
       } catch (err: unknown) {
         const errorMessage = err instanceof ApiError ? err.detail : 'The ticket action could not be completed.';
-        setMessages((prev) => [
-          ...prev,
-          {
-            ...assistantMessage(errorMessage),
-            error: errorMessage,
-          },
-        ]);
+        const invalidField = err instanceof ApiError ? firstInvalidField(err.fields) : null;
+        const createField = invalidField === 'title' || invalidField === 'description' || invalidField === 'priority' || invalidField === 'category'
+          ? invalidField
+          : null;
+        if (createField && workflow.kind === 'create-ticket') {
+          setPendingAction({
+            kind: 'create',
+            fields: { ...workflow.payload, [createField]: undefined },
+            awaiting: createField,
+          });
+          setMessages((prev) => [
+            ...prev,
+            assistantMessage(`${err instanceof ApiError ? err.fields[createField] : errorMessage} Please provide the ${createField} again.`),
+          ]);
+        } else if (invalidField && workflow.kind === 'add-comment' && (invalidField === 'author' || invalidField === 'body')) {
+          setPendingAction({
+            kind: 'comment',
+            ticketId: workflow.ticketId,
+            author: invalidField === 'author' ? undefined : workflow.payload.author,
+            body: invalidField === 'body' ? undefined : workflow.payload.body,
+            awaiting: invalidField,
+          });
+          setMessages((prev) => [
+            ...prev,
+            assistantMessage(err instanceof ApiError ? err.fields[invalidField] : errorMessage),
+          ]);
+        } else {
+          setPendingAction(null);
+          setMessages((prev) => [
+            ...prev,
+            {
+              ...assistantMessage(errorMessage),
+              error: errorMessage,
+            },
+          ]);
+        }
       } finally {
         setIsLoading(false);
       }
       return;
     }
 
+    setPendingAction(null);
     const command = parseStatusCommand(trimmed);
     if (command) {
       try {

@@ -1,3 +1,4 @@
+import { parseStatusCommand } from '@/lib/statusCommand';
 import {
   AddCommentPayload,
   CreateTicketPayload,
@@ -36,6 +37,12 @@ export function continueChatWorkflow(
   const value = text.trim();
   if (pending && /^(cancel|never mind|nevermind|stop)$/i.test(value)) {
     return { kind: 'cancelled', message: 'Okay, I cancelled that action.' };
+  }
+  if (pending && (isCommentCommand(value) || isCreateCommand(value))) {
+    return continueChatWorkflow(value, null);
+  }
+  if (pending && parseStatusCommand(value)) {
+    return { kind: 'none' };
   }
 
   if (pending?.kind === 'comment') {
@@ -93,9 +100,9 @@ function continueComment(text: string, current: Extract<PendingChatAction, { kin
 
 function continueCreate(text: string, current: Extract<PendingChatAction, { kind: 'create' }>): ChatWorkflowResult {
   const parsed = parseCreateFields(text);
-  if (current.awaiting && Object.keys(parsed).length === 0) {
+  if (current.awaiting && parsed[current.awaiting] === undefined && Object.keys(parsed).length === 0) {
     if (current.awaiting === 'priority') {
-      parsed.priority = priority(text);
+      parsed.priority = priorityWord(text);
     } else {
       parsed[current.awaiting] = cleanAnswer(text);
     }
@@ -148,11 +155,17 @@ function parseComment(text: string): Extract<PendingChatAction, { kind: 'comment
   const authorName = author(text);
   let body = field(text, 'comment') ?? field(text, 'body');
   if (!body) {
+    const afterTicket = text.match(
+      /\bticket\s*(?:id\s*)?#?\s*\d+\b(?:\s+by\s+[A-Za-z][A-Za-z .'-]*)?\s*:\s*([\s\S]+)$/i
+    );
+    body = afterTicket?.[1]?.trim();
+  }
+  if (!body) {
     body = text
       .replace(/\b(?:add|post|leave|write)\s+(?:a\s+)?comment\b/i, '')
       .replace(/\b(?:to|on|for)\s+ticket\s*(?:id\s*)?#?\s*\d+\b/i, '')
       .replace(/\b(?:author|name)\s*[:=]\s*[^,;\n]+/i, '')
-      .replace(/\s+\bby\s+[A-Za-z][A-Za-z .'-]*$/i, '')
+      .replace(/\s+\bby\s+[A-Za-z][A-Za-z .'-]*(?=\s*:|,|$)/i, '')
       .replace(/^[\s:,-]+|[\s,;-]+$/g, '')
       .trim();
   }
@@ -165,12 +178,14 @@ function parseComment(text: string): Extract<PendingChatAction, { kind: 'comment
 }
 
 function parseCreateFields(text: string): CreateFields {
-  const fields: CreateFields = {};
-  fields.title = field(text, 'title');
-  fields.description = field(text, 'description');
-  fields.category = field(text, 'category');
-  fields.assignee = field(text, 'assignee') ?? field(text, 'assigned to');
-  fields.priority = priority(field(text, 'priority') ?? text);
+  const labelled = labelledFields(text);
+  const fields: CreateFields = {
+    title: labelled.title,
+    description: labelled.description,
+    category: labelled.category,
+    assignee: labelled.assignee ?? labelled['assigned to'],
+    priority: priorityWord(labelled.priority ?? ''),
+  };
 
   if (!fields.title) {
     const titled = text.match(/\b(?:titled|called)\s+["']?(.+?)["']?(?=\s+(?:with|description|priority|category|assigned)\b|$)/i);
@@ -181,21 +196,38 @@ function parseCreateFields(text: string): CreateFields {
   ) as CreateFields;
 }
 
+const FIELD_LABELS = ['assigned to', 'description', 'priority', 'category', 'assignee', 'title', 'comment', 'body', 'author', 'name'];
+
+function labelledFields(text: string): Record<string, string> {
+  const pattern = new RegExp(`\\b(${FIELD_LABELS.join('|')})\\s*[:=]\\s*`, 'gi');
+  const matches: RegExpExecArray[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(text)) !== null) {
+    matches.push(match);
+  }
+  const values: Record<string, string> = {};
+  matches.forEach((match, index) => {
+    const start = (match.index ?? 0) + match[0].length;
+    const end = index + 1 < matches.length ? matches[index + 1].index ?? text.length : text.length;
+    const value = text.slice(start, end).replace(/^["'\s]+|["'\s,;]+$/g, '');
+    if (value) {
+      values[match[1].toLowerCase()] = value;
+    }
+  });
+  return values;
+}
+
 function field(text: string, name: string): string | undefined {
-  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = text.match(
-    new RegExp(`(?:^|[,;\\n])\\s*${escaped}\\s*[:=]\\s*(.+?)(?=\\s*(?:[,;\\n]|$))`, 'i')
-  );
-  return match?.[1]?.trim().replace(/^["']|["']$/g, '') || undefined;
+  return labelledFields(text)[name.toLowerCase()];
 }
 
 function author(text: string): string | undefined {
   const labelled = field(text, 'author') ?? field(text, 'name');
   if (labelled) return labelled;
+  const byName = text.match(/\bby\s+([A-Za-z][A-Za-z .'-]{0,118}?)\s*(?::|,|$)/i);
+  if (byName) return byName[1].trim();
   const named = text.match(/\b(?:my name is|i am|i'm)\s+([A-Za-z][A-Za-z .'-]*)$/i);
-  if (named) return named[1].trim();
-  const trailing = text.match(/\s+\bby\s+([A-Za-z][A-Za-z .'-]*)$/i);
-  return trailing?.[1]?.trim();
+  return named?.[1]?.trim();
 }
 
 function ticketId(text: string): number | undefined {
@@ -205,8 +237,8 @@ function ticketId(text: string): number | undefined {
   return onlyNumber ? Number(onlyNumber[1]) : undefined;
 }
 
-function priority(text: string): TicketPriority | undefined {
-  const match = text.match(/\b(low|medium|high|urgent)\b/i);
+function priorityWord(text: string): TicketPriority | undefined {
+  const match = text.match(/^\s*(low|medium|high|urgent)\s*$/i);
   const value = match?.[1]?.toUpperCase() as TicketPriority | undefined;
   return value && PRIORITIES.includes(value) ? value : undefined;
 }
@@ -224,7 +256,8 @@ function isCommentCommand(text: string): boolean {
 }
 
 function isCreateCommand(text: string): boolean {
-  return /\b(?:create|open|raise|file)\s+(?:a\s+)?(?:new\s+)?ticket\b/i.test(text);
+  return /\b(?:create|raise|file)\s+(?:a\s+)?(?:new\s+)?ticket\b/i.test(text)
+    || /\bopen\s+(?:a\s+)?new\s+ticket\b/i.test(text);
 }
 
 function cleanAnswer(text: string): string {
