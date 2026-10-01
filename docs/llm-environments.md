@@ -1,6 +1,6 @@
 # Connecting the ask endpoint to a language model
 
-`POST /api/ai/ask` calls an OpenAI-compatible chat endpoint. The client posts to `{base-url}/chat/completions` with `model` and `messages`, and reads `choices[0].message.content`. A bearer token is sent only when `LLM_API_KEY` is set. The model name is never hardcoded in Java.
+`POST /api/ai/ask` calls a chat endpoint and reads the answer text, never a thinking trace. Test and production post to `{base-url}/chat/completions` and read `choices[0].message.content`. The dev profile sets `ollama-native: true`, which posts to Ollama `POST /api/chat` instead, because Ollama's `/v1/chat/completions` shim ignores `think` and can return an empty `content`. A bearer token is sent only on the OpenAI-compatible call, and only when `LLM_API_KEY` is set. The model name is never hardcoded in Java.
 
 Select the environment with `SPRING_PROFILES_ACTIVE`.
 
@@ -34,7 +34,7 @@ Ollama is already the development target.
    mvn spring-boot:run
    ```
 
-   That uses `http://127.0.0.1:11434/v1` and `qwen3.5:4b`. To try another local model without editing files:
+   That uses Ollama at `http://127.0.0.1:11434/api/chat` with `think: false` and model `qwen3.5:4b`. To try another local model without editing files:
 
    ```bash
    LLM_MODEL=llama3.1:8b SPRING_PROFILES_ACTIVE=dev mvn spring-boot:run

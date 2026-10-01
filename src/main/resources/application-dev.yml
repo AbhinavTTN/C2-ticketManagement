@@ -6,3 +6,6 @@ app:
     model: ${LLM_MODEL:qwen3.5:4b}
     api-key: ${LLM_API_KEY:}
     think: ${LLM_THINK:false}
+    # Ollama's OpenAI shim ignores think and fills the context with reasoning,
+    # which comes back as an empty answer. The native chat API honors think.
+    ollama-native: ${LLM_OLLAMA_NATIVE:true}

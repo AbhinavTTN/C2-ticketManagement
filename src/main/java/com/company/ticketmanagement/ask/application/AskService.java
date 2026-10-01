@@ -35,6 +35,10 @@ public class AskService {
     }
 
     public AskResponse ask(AskRequest request) {
+        List<Long> namedIds = TicketIdMentions.find(request.question());
+        if (!namedIds.isEmpty()) {
+            return answerNamedTickets(request, namedIds);
+        }
         List<RetrievedChunk> nearest = chunkRetriever.search(request.question(), properties.topK());
         List<RetrievedChunk> relevant = nearest.stream()
                 .filter(hit -> hit.similarity() >= properties.similarityThreshold())
@@ -46,7 +50,26 @@ public class AskService {
         if (usable.isEmpty()) {
             return new AskResponse(request.question(), false, AskPrompt.NO_MATCH, List.of());
         }
-        String answer = llmClient.complete(AskPrompt.build(request.question(), usable));
+        return answer(request, tickets, usable);
+    }
+
+    private AskResponse answerNamedTickets(AskRequest request, List<Long> namedIds) {
+        Map<Long, Ticket> tickets = new LinkedHashMap<>();
+        List<RetrievedChunk> chunks = new ArrayList<>();
+        for (Long id : namedIds) {
+            ticketRepository.findByIdWithComments(id).ifPresent(ticket -> {
+                tickets.put(id, ticket);
+                chunks.addAll(TicketExcerpts.of(id, ticket));
+            });
+        }
+        if (tickets.isEmpty()) {
+            return new AskResponse(request.question(), false, AskPrompt.NO_MATCH, List.of());
+        }
+        return answer(request, tickets, chunks);
+    }
+
+    private AskResponse answer(AskRequest request, Map<Long, Ticket> tickets, List<RetrievedChunk> chunks) {
+        String answer = llmClient.complete(AskPrompt.build(request.question(), chunks));
         if (answer == null || answer.isBlank()) {
             throw new IllegalStateException("Language model returned an empty answer.");
         }

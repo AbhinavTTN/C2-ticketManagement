@@ -32,7 +32,7 @@ const STATUSES: { label: string; value: TicketStatus | '' }[] = [
 
 export default function TicketListPage() {
   const router = useRouter();
-  const { openPanel } = useAiChat();
+  const { openPanel, revision } = useAiChat();
 
   const [tickets, setTickets] = useState<TicketSummary[]>([]);
   const [page, setPage] = useState(0);
@@ -78,7 +78,7 @@ export default function TicketListPage() {
 
   useEffect(() => {
     loadTickets(page, status, activeQuery);
-  }, [loadTickets, page, status, activeQuery]);
+  }, [loadTickets, page, status, activeQuery, revision]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();

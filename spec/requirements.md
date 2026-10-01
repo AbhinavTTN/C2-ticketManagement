@@ -108,7 +108,9 @@ The UI shows backend errors in language a support user can act on. It uses `titl
 
 ## B. Natural-language question answering over ticket history
 
-QA is a **read-only** feature. It must not create, update, transition, or comment on tickets. HTTP surface: `POST /api/v1/qa` (also referred to as `/api/ai/ask` in review commands). Request: `{ "question": "..." }` (required, non-blank, max 1000 characters). Response: `{ "question", "found", "answer", "citations" }` where each citation is `{ "ticketId", "title", "status" }`.
+The QA endpoint is **read-only**. It must not create, update, transition, or comment on tickets. HTTP surface: `POST /api/v1/qa` (also referred to as `/api/ai/ask` in review commands). Request: `{ "question": "..." }` (required, non-blank, max 1000 characters). Response: `{ "question", "found", "answer", "citations" }` where each citation is `{ "ticketId", "title", "status" }`.
+
+The UI assistant may separately recognize explicit create, comment, and status commands and route them through the CRUD endpoints from section A. It collects missing required fields before writing. In particular, it asks for the comment author when no name is present and never substitutes an invented name.
 
 ### FR-14 Grounded answers only
 

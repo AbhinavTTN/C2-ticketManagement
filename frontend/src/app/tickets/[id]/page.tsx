@@ -31,7 +31,7 @@ import {
 export default function TicketDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { openPanel } = useAiChat();
+  const { openPanel, revision } = useAiChat();
 
   const id = params?.id as string;
 
@@ -62,9 +62,9 @@ export default function TicketDetailPage() {
   // Transition in-flight state
   const [isTransitioning, setIsTransitioning] = useState<TicketStatus | null>(null);
 
-  const loadTicketData = useCallback(async () => {
+  const loadTicketData = useCallback(async (quiet = false) => {
     if (!id) return;
-    setIsLoading(true);
+    if (!quiet) setIsLoading(true);
     setBannerError(null);
     setNotFoundError(null);
     try {
@@ -94,8 +94,13 @@ export default function TicketDetailPage() {
   }, [id]);
 
   useEffect(() => {
-    loadTicketData();
+    loadTicketData(false);
   }, [loadTicketData]);
+
+  useEffect(() => {
+    if (revision === 0) return;
+    loadTicketData(true);
+  }, [revision, loadTicketData]);
 
   // Handle inline edit save
   const handleSaveEdit = async (e: React.FormEvent) => {

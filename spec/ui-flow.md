@@ -78,9 +78,9 @@ The panel does not navigate away from the current screen. Choosing a citation op
 
 **Cancel.** Return to the detail without writing.
 
-## AI Q&A panel
+## AI assistant panel
 
-The panel is read-only. It has no create, edit, comment, or status controls. It calls only `POST /api/v1/qa`.
+The panel answers questions through `POST /api/v1/qa`. It also recognizes explicit ticket actions and sends them through the existing create, comment, and status endpoints. The QA endpoint itself remains read-only.
 
 **Open.** A control on the list and on the detail opens the panel. The ticket screen underneath stays mounted. Closing the panel discards nothing on the ticket.
 
@@ -90,6 +90,12 @@ The panel is read-only. It has no create, edit, comment, or status controls. It 
 
 **Nothing found.** `found=false`: show the server `answer` (the no-relevant-tickets message) and no citation rows. Do not add a suggested ticket, a guessed cause, or a follow-up that implies a match.
 
+**Create ticket.** A message such as “Create a new ticket” starts a guided flow. Extract any supplied `title`, `description`, `priority`, `category`, and optional `assignee`; ask one follow-up at a time for required fields that are absent. Submit through `POST /api/v1/tickets`, then show and link the created ticket.
+
+**Add comment.** A message such as “Add comment to ticket #4: Restart fixed it” starts a comment flow. Extract the ticket id, body, and author when supplied. If the author/name is absent, ask for it before calling `POST /api/v1/tickets/{id}/comments`. Never invent an author.
+
+**Cancel action.** While collecting fields, “cancel”, “stop”, or “never mind” discards the pending action without writing.
+
 **Error.** 400 highlights the question with `fields.question` or `detail`. 500 shows the generic `detail` only. A failed ask leaves the previous answer on screen if one existed, with the error above it.
 
-**While a ticket is open.** The panel does not auto-fill the question with that ticket. The user may type “ticket #123” themselves. The panel does not refresh the ticket after an answer, because QA must not change ticket data.
+**While a ticket is open.** The panel does not auto-fill the question with that ticket. The user may type “ticket #123” themselves. After a successful action, refresh visible ticket data; a QA-only answer does not refresh it.

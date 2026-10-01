@@ -3,9 +3,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useAiChat } from './AiChatContext';
-import { askAi, ApiError } from '@/lib/api';
-import { Citation, TicketStatus } from '@/types/ticket';
-import { MessageSquare, Send, X, AlertCircle, Sparkles, ExternalLink, RefreshCw } from 'lucide-react';
+import {
+  addComment,
+  askAi,
+  ApiError,
+  createTicket,
+  fetchTicket,
+  transitionTicket,
+} from '@/lib/api';
+import { continueChatWorkflow, PendingChatAction } from '@/lib/chatWorkflow';
+import { parseStatusCommand } from '@/lib/statusCommand';
+import { Citation, Ticket, TicketStatus } from '@/types/ticket';
+import { MessageSquare, Send, X, AlertCircle, Sparkles, ExternalLink, RefreshCw, ArrowRight } from 'lucide-react';
 
 interface ChatMessage {
   id: string;
@@ -17,12 +26,26 @@ interface ChatMessage {
   timestamp: Date;
 }
 
+function assistantMessage(text: string, ticket?: Ticket): ChatMessage {
+  return {
+    id: Math.random().toString(36).substring(7),
+    sender: 'assistant',
+    text,
+    found: Boolean(ticket),
+    citations: ticket
+      ? [{ ticketId: ticket.id, title: ticket.title, status: ticket.status }]
+      : undefined,
+    timestamp: new Date(),
+  };
+}
+
 export default function AiChatPanel() {
-  const { isOpen, closePanel } = useAiChat();
+  const { isOpen, closePanel, notifyTicketsChanged } = useAiChat();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [inputError, setInputError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [pendingAction, setPendingAction] = useState<PendingChatAction | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -56,6 +79,103 @@ export default function AiChatPanel() {
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setIsLoading(true);
+
+    const workflow = continueChatWorkflow(trimmed, pendingAction);
+    if (workflow.kind !== 'none') {
+      if (workflow.kind === 'prompt') {
+        setPendingAction(workflow.pending);
+        setMessages((prev) => [
+          ...prev,
+          assistantMessage(workflow.message),
+        ]);
+        setIsLoading(false);
+        return;
+      }
+      if (workflow.kind === 'cancelled') {
+        setPendingAction(null);
+        setMessages((prev) => [...prev, assistantMessage(workflow.message)]);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        if (workflow.kind === 'add-comment') {
+          const updated = await addComment(workflow.ticketId, workflow.payload);
+          setMessages((prev) => [
+            ...prev,
+            assistantMessage(
+              `Comment added to ticket #${updated.id} by ${workflow.payload.author}.`,
+              updated
+            ),
+          ]);
+        } else {
+          const created = await createTicket(workflow.payload);
+          setMessages((prev) => [
+            ...prev,
+            assistantMessage(`Created ticket #${created.id}: ${created.title}.`, created),
+          ]);
+        }
+        setPendingAction(null);
+        notifyTicketsChanged();
+      } catch (err: unknown) {
+        const errorMessage = err instanceof ApiError ? err.detail : 'The ticket action could not be completed.';
+        setMessages((prev) => [
+          ...prev,
+          {
+            ...assistantMessage(errorMessage),
+            error: errorMessage,
+          },
+        ]);
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    const command = parseStatusCommand(trimmed);
+    if (command) {
+      try {
+        const updated = await transitionTicket(command.id, { status: command.status });
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Math.random().toString(36).substring(7),
+            sender: 'assistant',
+            text: `Ticket #${updated.id} is now ${updated.status}.`,
+            found: true,
+            citations: [{ ticketId: updated.id, title: updated.title, status: updated.status }],
+            timestamp: new Date(),
+          },
+        ]);
+        notifyTicketsChanged();
+      } catch (err: unknown) {
+        const errorMessage = err instanceof ApiError ? err.detail : 'The status could not be changed.';
+        let citations: Citation[] | undefined;
+        if (err instanceof ApiError && err.status !== 404) {
+          try {
+            const current = await fetchTicket(command.id);
+            citations = [{ ticketId: current.id, title: current.title, status: current.status }];
+          } catch {
+            citations = undefined;
+          }
+        }
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Math.random().toString(36).substring(7),
+            sender: 'assistant',
+            text: errorMessage,
+            error: citations ? undefined : errorMessage,
+            found: Boolean(citations),
+            citations,
+            timestamp: new Date(),
+          },
+        ]);
+      } finally {
+        setIsLoading(false);
+      }
+      return;
+    }
 
     try {
       const response = await askAi(trimmed);
@@ -124,7 +244,10 @@ export default function AiChatPanel() {
             {messages.length > 0 && (
               <button
                 type="button"
-                onClick={() => setMessages([])}
+                onClick={() => {
+                  setMessages([]);
+                  setPendingAction(null);
+                }}
                 className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
                 title="Clear conversation"
               >
@@ -149,17 +272,18 @@ export default function AiChatPanel() {
               <div className="rounded-full bg-indigo-50 p-3 text-indigo-600 mb-3">
                 <MessageSquare className="h-6 w-6" />
               </div>
-              <p className="text-sm font-medium text-slate-800">Ask any question about stored tickets</p>
+              <p className="text-sm font-medium text-slate-800">Ask questions or manage tickets</p>
               <p className="text-xs text-slate-500 mt-1 max-w-xs">
-                Answers are grounded strictly in persisted tickets and comments with cited ticket references.
+                Search ticket history, create tickets, add comments, and update allowed statuses.
               </p>
               <div className="mt-6 flex flex-col gap-2 w-full text-left">
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Sample queries:</span>
                 {[
                   'What do we know about password reset?',
                   'Who checked the SMTP logs?',
-                  'What fixed the billing email bounce?',
                   'Summarize ticket #1',
+                  'Add a comment to ticket #1',
+                  'Create a new ticket',
                 ].map((sample) => (
                   <button
                     key={sample}
@@ -207,30 +331,24 @@ export default function AiChatPanel() {
                             </span>
                             <div className="grid grid-cols-1 gap-1.5">
                               {msg.citations.map((c) => (
-                                <Link
-                                  key={c.ticketId}
-                                  href={`/tickets/${c.ticketId}`}
-                                  className="group flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs hover:border-indigo-300 hover:bg-indigo-50/50 transition"
-                                >
-                                  <div className="flex items-center gap-2 truncate mr-2">
-                                    <span className="font-mono font-medium text-indigo-600">
-                                      #{c.ticketId}
-                                    </span>
-                                    <span className="font-medium text-slate-800 truncate group-hover:text-indigo-900">
-                                      {c.title}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-2 flex-shrink-0">
-                                    <span
-                                      className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getStatusBadge(
-                                        c.status
-                                      )}`}
-                                    >
-                                      {c.status}
-                                    </span>
-                                    <ExternalLink className="h-3 w-3 text-slate-400 group-hover:text-indigo-600" />
-                                  </div>
-                                </Link>
+                                <CitationCard
+                                  key={`${c.ticketId}-${c.status}`}
+                                  citation={c}
+                                  badgeClass={getStatusBadge(c.status)}
+                                  onChanged={(updated) => {
+                                    setMessages((prev) =>
+                                      prev.map((item) => ({
+                                        ...item,
+                                        citations: item.citations?.map((cited) =>
+                                          cited.ticketId === updated.id
+                                            ? { ...cited, title: updated.title, status: updated.status }
+                                            : cited
+                                        ),
+                                      }))
+                                    );
+                                    notifyTicketsChanged();
+                                  }}
+                                />
                               ))}
                             </div>
                           </div>
@@ -282,7 +400,7 @@ export default function AiChatPanel() {
                   }
                 }}
                 disabled={isLoading}
-                placeholder="Ask a question about tickets (e.g. SMTP issues)..."
+                placeholder="Ask a question or manage a ticket..."
                 rows={2}
                 maxLength={1000}
                 className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-60"
@@ -303,6 +421,89 @@ export default function AiChatPanel() {
           </form>
         </div>
       </div>
+    </div>
+  );
+}
+
+function CitationCard({
+  citation,
+  badgeClass,
+  onChanged,
+}: {
+  citation: Citation;
+  badgeClass: string;
+  onChanged: (ticket: Ticket) => void;
+}) {
+  const [allowed, setAllowed] = useState<TicketStatus[]>([]);
+  const [status, setStatus] = useState(citation.status);
+  const [busy, setBusy] = useState<TicketStatus | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchTicket(citation.ticketId)
+      .then((ticket) => {
+        if (cancelled) return;
+        setStatus(ticket.status);
+        setAllowed(ticket.allowedTransitions);
+      })
+      .catch(() => {
+        if (!cancelled) setAllowed([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [citation.ticketId, citation.status]);
+
+  const move = async (target: TicketStatus) => {
+    setBusy(target);
+    setError(null);
+    try {
+      const updated = await transitionTicket(citation.ticketId, { status: target });
+      setStatus(updated.status);
+      setAllowed(updated.allowedTransitions);
+      onChanged(updated);
+    } catch (err: unknown) {
+      setError(err instanceof ApiError ? err.detail : 'The status could not be changed.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs">
+      <Link
+        href={`/tickets/${citation.ticketId}`}
+        className="group flex items-center justify-between hover:text-indigo-700"
+      >
+        <div className="flex items-center gap-2 truncate mr-2">
+          <span className="font-mono font-medium text-indigo-600">#{citation.ticketId}</span>
+          <span className="font-medium text-slate-800 truncate group-hover:text-indigo-900">{citation.title}</span>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${badgeClass}`}>
+            {status}
+          </span>
+          <ExternalLink className="h-3 w-3 text-slate-400 group-hover:text-indigo-600" />
+        </div>
+      </Link>
+      {allowed.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {allowed.map((target) => (
+            <button
+              key={target}
+              type="button"
+              disabled={busy !== null}
+              onClick={() => move(target)}
+              className="inline-flex items-center gap-1 rounded-md bg-slate-900 px-2 py-1 text-[10px] font-medium text-white hover:bg-indigo-600 disabled:opacity-50"
+            >
+              <ArrowRight className="h-3 w-3" />
+              <span>{busy === target ? 'Saving...' : `Move to ${target}`}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {error && <p className="mt-1.5 text-[11px] text-red-600">{error}</p>}
     </div>
   );
 }

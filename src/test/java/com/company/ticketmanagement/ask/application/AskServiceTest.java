@@ -2,6 +2,8 @@ package com.company.ticketmanagement.ask.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -87,15 +89,49 @@ class AskServiceTest {
 
     @Test
     void ask_whenRetrievedTicketIsGone_returnsNoMatch() {
-        given(chunkRetriever.search("ticket 999999", 2))
+        given(chunkRetriever.search("missing printer", 2))
                 .willReturn(List.of(new RetrievedChunk(999999L, "missing", 0.9)));
         given(ticketRepository.findById(999999L)).willReturn(Optional.empty());
 
-        var response = askService.ask(new AskRequest("ticket 999999"));
+        var response = askService.ask(new AskRequest("missing printer"));
 
         assertThat(response.found()).isFalse();
         assertThat(response.citations()).isEmpty();
         verify(llmClient, never()).complete(any());
+    }
+
+    @Test
+    void ask_whenQuestionNamesTicketId_usesThatTicketOnly() {
+        Ticket named = new Ticket("500 error on chat", "The chat request failed.", TicketPriority.HIGH, "Sam", "Chat bot");
+        given(ticketRepository.findByIdWithComments(4L)).willReturn(Optional.of(named));
+        given(llmClient.complete(any())).willReturn("Ticket 4 is OPEN. Title: 500 error on chat.");
+
+        var response = askService.ask(new AskRequest("Summarize ticket #4"));
+
+        assertThat(response.found()).isTrue();
+        assertThat(response.citations()).extracting(citation -> citation.ticketId()).containsExactly(4L);
+        assertThat(response.citations().getFirst().title()).isEqualTo("500 error on chat");
+        assertThat(response.citations().getFirst().status()).isEqualTo(TicketStatus.OPEN);
+        ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
+        verify(llmClient).complete(prompt.capture());
+        assertThat(prompt.getValue()).contains("[ticket 4]");
+        assertThat(prompt.getValue()).contains("Status: OPEN");
+        assertThat(prompt.getValue()).contains("500 error on chat");
+        assertThat(prompt.getValue()).doesNotContain("[ticket 1]");
+        verify(chunkRetriever, never()).search(anyString(), anyInt());
+    }
+
+    @Test
+    void ask_whenNamedTicketIsMissing_returnsNoMatchWithoutSearch() {
+        given(ticketRepository.findByIdWithComments(999999L)).willReturn(Optional.empty());
+
+        var response = askService.ask(new AskRequest("Summarize ticket #999999"));
+
+        assertThat(response.found()).isFalse();
+        assertThat(response.answer()).isEqualTo("No relevant tickets were found.");
+        assertThat(response.citations()).isEmpty();
+        verify(llmClient, never()).complete(any());
+        verify(chunkRetriever, never()).search(anyString(), anyInt());
     }
 
     @Test

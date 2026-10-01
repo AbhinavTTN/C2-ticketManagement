@@ -3,6 +3,8 @@ package com.company.ticketmanagement.common.exception;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -11,12 +13,15 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import com.company.ticketmanagement.ask.application.LanguageModelEmptyAnswerException;
 import com.company.ticketmanagement.ask.application.LanguageModelNotConfiguredException;
 import com.company.ticketmanagement.ticket.domain.TicketNotFoundException;
 import com.company.ticketmanagement.ticket.domain.TicketStateConflictException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(TicketNotFoundException.class)
     ProblemDetail notFound(TicketNotFoundException ex) {
@@ -85,8 +90,17 @@ public class GlobalExceptionHandler {
         return body;
     }
 
+    @ExceptionHandler(LanguageModelEmptyAnswerException.class)
+    ProblemDetail emptyAnswer(LanguageModelEmptyAnswerException ex) {
+        ProblemDetail body = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_GATEWAY, ex.getMessage());
+        body.setTitle("Language model returned no answer");
+        body.setProperty("code", ex.getCode().name());
+        return body;
+    }
+
     @ExceptionHandler(Exception.class)
     ProblemDetail unhandled(Exception ex) {
+        log.error("Unhandled request error", ex);
         ProblemDetail body = ProblemDetail.forStatusAndDetail(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "An unexpected error occurred. Please try again.");
