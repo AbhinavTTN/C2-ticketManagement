@@ -8,6 +8,7 @@ import org.springframework.web.client.RestClient;
 
 import com.company.ticketmanagement.ask.application.LanguageModelNotConfiguredException;
 import com.company.ticketmanagement.ask.application.LlmClient;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -39,7 +40,10 @@ public class ChatLlmClient implements LlmClient {
                         headers.setBearerAuth(properties.apiKey());
                     }
                 })
-                .body(new ChatRequest(properties.model(), List.of(new ChatMessage("user", prompt))))
+                .body(new ChatRequest(
+                        properties.model(),
+                        List.of(new ChatMessage("user", prompt)),
+                        properties.think()))
                 .retrieve()
                 .body(String.class);
         return readContent(body);
@@ -59,7 +63,8 @@ public class ChatLlmClient implements LlmClient {
         }
     }
 
-    private record ChatRequest(String model, List<ChatMessage> messages) {
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private record ChatRequest(String model, List<ChatMessage> messages, Boolean think) {
     }
 
     private record ChatMessage(String role, String content) {

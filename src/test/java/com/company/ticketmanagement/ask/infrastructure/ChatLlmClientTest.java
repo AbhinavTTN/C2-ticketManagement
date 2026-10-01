@@ -35,7 +35,7 @@ class ChatLlmClientTest {
                         """,
                         MediaType.APPLICATION_JSON));
         ChatLlmClient client = new ChatLlmClient(
-                new LlmProperties("http://llm.test/v1/", "test-model", "test-key"),
+                new LlmProperties("http://llm.test/v1/", "test-model", "test-key", null),
                 builder,
                 new ObjectMapper());
 
@@ -46,7 +46,7 @@ class ChatLlmClientTest {
     @Test
     void complete_whenModelIsMissing_doesNotCallTheEndpoint() {
         ChatLlmClient client = new ChatLlmClient(
-                new LlmProperties("http://llm.test/v1", "  ", null),
+                new LlmProperties("http://llm.test/v1", "  ", null, null),
                 RestClient.builder(),
                 new ObjectMapper());
 

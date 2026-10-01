@@ -1,0 +1,59 @@
+{
+  "pages": {
+    "/_not-found/page": [
+      "static/chunks/webpack-616e068a201ad621.js",
+      "static/chunks/fd9d1056-13f2035e4b026c54.js",
+      "static/chunks/117-2b5f8e9a6f50682c.js",
+      "static/chunks/main-app-6517083e3fc3e63c.js",
+      "static/chunks/app/_not-found/page-4cef5b2b5816cf79.js"
+    ],
+    "/layout": [
+      "static/chunks/webpack-616e068a201ad621.js",
+      "static/chunks/fd9d1056-13f2035e4b026c54.js",
+      "static/chunks/117-2b5f8e9a6f50682c.js",
+      "static/chunks/main-app-6517083e3fc3e63c.js",
+      "static/css/cb72ef8dd769e24e.css",
+      "static/chunks/568-e1821f372e9b6fba.js",
+      "static/chunks/app/layout-6cbc60ecf7048873.js"
+    ],
+    "/page": [
+      "static/chunks/webpack-616e068a201ad621.js",
+      "static/chunks/fd9d1056-13f2035e4b026c54.js",
+      "static/chunks/117-2b5f8e9a6f50682c.js",
+      "static/chunks/main-app-6517083e3fc3e63c.js",
+      "static/chunks/app/page-0a8b9a7b052e6eac.js"
+    ],
+    "/tickets/[id]/page": [
+      "static/chunks/webpack-616e068a201ad621.js",
+      "static/chunks/fd9d1056-13f2035e4b026c54.js",
+      "static/chunks/117-2b5f8e9a6f50682c.js",
+      "static/chunks/main-app-6517083e3fc3e63c.js",
+      "static/chunks/568-e1821f372e9b6fba.js",
+      "static/chunks/app/tickets/[id]/page-9fd05e1b5a534091.js"
+    ],
+    "/tickets/new/page": [
+      "static/chunks/webpack-616e068a201ad621.js",
+      "static/chunks/fd9d1056-13f2035e4b026c54.js",
+      "static/chunks/117-2b5f8e9a6f50682c.js",
+      "static/chunks/main-app-6517083e3fc3e63c.js",
+      "static/chunks/568-e1821f372e9b6fba.js",
+      "static/chunks/app/tickets/new/page-f18ba049bce628c4.js"
+    ],
+    "/tickets/page": [
+      "static/chunks/webpack-616e068a201ad621.js",
+      "static/chunks/fd9d1056-13f2035e4b026c54.js",
+      "static/chunks/117-2b5f8e9a6f50682c.js",
+      "static/chunks/main-app-6517083e3fc3e63c.js",
+      "static/chunks/568-e1821f372e9b6fba.js",
+      "static/chunks/app/tickets/page-c206676522b4e807.js"
+    ],
+    "/tickets/[id]/edit/page": [
+      "static/chunks/webpack-616e068a201ad621.js",
+      "static/chunks/fd9d1056-13f2035e4b026c54.js",
+      "static/chunks/117-2b5f8e9a6f50682c.js",
+      "static/chunks/main-app-6517083e3fc3e63c.js",
+      "static/chunks/568-e1821f372e9b6fba.js",
+      "static/chunks/app/tickets/[id]/edit/page-8555f4d1ed71b08e.js"
+    ]
+  }
+}

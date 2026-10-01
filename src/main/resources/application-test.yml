@@ -1,0 +1,8 @@
+# Shared test environment. Start with: SPRING_PROFILES_ACTIVE=test
+# Do not fall back to a developer laptop. Set every value in the environment.
+app:
+  llm:
+    base-url: ${LLM_BASE_URL:}
+    model: ${LLM_MODEL:}
+    api-key: ${LLM_API_KEY:}
+    think: ${LLM_THINK:#{null}}

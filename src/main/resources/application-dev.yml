@@ -1,0 +1,8 @@
+# Local development. Start with: SPRING_PROFILES_ACTIVE=dev
+# Requires Ollama on this machine: ollama serve && ollama pull qwen3.5:4b
+app:
+  llm:
+    base-url: ${LLM_BASE_URL:http://127.0.0.1:11434/v1}
+    model: ${LLM_MODEL:qwen3.5:4b}
+    api-key: ${LLM_API_KEY:}
+    think: ${LLM_THINK:false}

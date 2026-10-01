@@ -22,6 +22,9 @@ app:
     top-k: 5
     similarity-threshold: 0.25
   llm:
+    # Endpoint, model, and key come from the active profile or the environment.
+    # Development defaults live in application-dev.yml (local Ollama).
+    # Test and production must set LLM_BASE_URL, LLM_MODEL, and LLM_API_KEY.
     base-url: ${LLM_BASE_URL:}
     model: ${LLM_MODEL:}
     api-key: ${LLM_API_KEY:}

@@ -12,7 +12,7 @@ import com.company.ticketmanagement.ask.dto.AskResponse;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/api/ai")
+@RequestMapping("/api")
 public class AskController {
 
     private final AskService askService;
@@ -21,7 +21,7 @@ public class AskController {
         this.askService = askService;
     }
 
-    @PostMapping("/ask")
+    @PostMapping({"/ai/ask", "/v1/qa"})
     public AskResponse ask(@Valid @RequestBody AskRequest request) {
         return askService.ask(request);
     }

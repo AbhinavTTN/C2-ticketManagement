@@ -1,0 +1,9 @@
+# Production. Start with: SPRING_PROFILES_ACTIVE=prod
+# Supply LLM_BASE_URL, LLM_MODEL, and LLM_API_KEY from the secret store.
+# Do not put a model name, endpoint, or key in this file.
+app:
+  llm:
+    base-url: ${LLM_BASE_URL:}
+    model: ${LLM_MODEL:}
+    api-key: ${LLM_API_KEY:}
+    think: ${LLM_THINK:#{null}}
